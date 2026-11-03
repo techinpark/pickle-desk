@@ -9,8 +9,9 @@ import { SignInScreen } from './components/SignInScreen'
 import { Timeline } from './components/Timeline'
 import { I18nProvider } from './i18n/i18n'
 import { translator } from './i18n/translate'
+import { track } from './lib/analytics'
 import { loadSettings, resolveLocale, saveSettings, type Settings } from './lib/settings'
-import { STATUSES, type Category, type Status, type Task } from './lib/types'
+import { STATUSES, type Category, type Status, type Task, type TaskSource } from './lib/types'
 import { useSession } from './lib/useSession'
 import { changedIds, useTasks } from './lib/useTasks'
 
@@ -117,6 +118,12 @@ export default function App() {
     void tasks.loadMore()
   }
 
+  const phase = session.phase
+  useEffect(() => {
+    if (phase === 'loading') return
+    track({ name: 'screen_view', screen: phase === 'signedOut' ? 'sign_in' : phase === 'noWorkbook' ? 'setup' : 'main' })
+  }, [phase])
+
   const counts = useMemo(() => {
     const c = Object.fromEntries(STATUSES.map((s) => [s, 0])) as Record<Status, number>
     for (const x of tasks.tasks) c[x.status] += 1
@@ -129,9 +136,10 @@ export default function App() {
   )
 
   const submit = useCallback(
-    async (task: string, category: Category) => {
+    async (task: string, category: Category, source: TaskSource) => {
       try {
         await tasks.create(task, category)
+        track({ name: 'task_send', category, source })
         setFilter('all')
         setToast({ text: t('composer.sent') })
         atBottom.current = true

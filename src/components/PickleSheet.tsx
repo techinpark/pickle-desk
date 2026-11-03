@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n/i18n'
+import { track } from '../lib/analytics'
 import { pickleInstruction } from '../lib/pickle'
 import { Icon } from './Icon'
 
@@ -24,6 +25,7 @@ export function PickleSheet({ sheetUrl, onClose }: Props) {
   }, [onClose])
 
   const copy = async () => {
+    track({ name: 'prompt_copy' })
     try {
       await navigator.clipboard.writeText(text)
     } catch {

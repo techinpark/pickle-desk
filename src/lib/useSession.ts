@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { track } from './analytics'
 import { canTrySilent, completeRedirect, isFresh, loadToken, signOut, startSignIn } from './google'
 import { createWorkbook, findWorkbook, SheetError, type Connection, type Workbook } from './sheet'
 
@@ -50,6 +51,7 @@ export function useSession() {
     let cancelled = false
     void (async () => {
       const r = await completeRedirect()
+      if (r.kind === 'ok') track({ name: 'login' })
       if (cancelled) return
       const t = loadToken()
       if (!isFresh(t)) {
@@ -98,6 +100,7 @@ export function useSession() {
       try {
         const w = await createWorkbook(currentToken, title)
         saveWorkbook(w, s.email)
+        track({ name: 'sheet_create' })
         setS({ phase: 'ready', email: s.email, workbook: w })
         return w
       } catch (e) {

@@ -31,6 +31,8 @@ jobs:
           BASE_PATH: /pickle-desk/
           # 레포 설정 → Secrets and variables → Actions → Variables 에 GOOGLE_CLIENT_ID 를 넣는다(공개 값이라 비밀값이 아님).
           VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          # 방문 통계(GA4). 비워 두면 통계를 보내지 않는다(포크 기본값).
+          VITE_GA_ID: ${{ vars.GA_MEASUREMENT_ID }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

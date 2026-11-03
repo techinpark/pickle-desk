@@ -13,7 +13,7 @@
   </head>
   <body>
     <h1>Pickle Desk 개인정보처리방침</h1>
-    <p>시행일: 2026년 11월 3일</p>
+    <p>시행일: 2026년 11월 3일 (방문 통계 항목 추가)</p>
     <p>Pickle Desk(이하 "앱")는 사용자의 구글 드라이브에 있는 시트로 AI 비서에게 일을 맡기고 답변을 확인하는 오픈소스 웹 앱입니다. 앱에는 운영 서버가 없고, 모든 처리는 사용자의 브라우저에서 이루어집니다.</p>
 
     <h2>1. 받는 권한과 쓰는 곳</h2>
@@ -26,7 +26,15 @@
     <ul>
       <li>작업과 답변은 <strong>사용자 본인의 구글 시트에만</strong> 저장됩니다.</li>
       <li>구글 액세스 토큰(1시간 유효), 이메일 주소, 작업함 시트 ID, 화면 설정은 <strong>사용자 기기의 브라우저 저장소</strong>에만 남습니다. 로그아웃하면 토큰과 시트 ID를 지우고 토큰을 구글에 반납합니다.</li>
-      <li>앱 개발자나 제3자에게 전송·판매·공유하는 정보는 없습니다. 분석 도구나 광고를 쓰지 않습니다.</li>
+      <li>구글 API 로 받은 정보(이메일, 작업 내용, 시트 주소, 토큰)는 앱 개발자나 제3자에게 전송·판매·공유하지 않습니다. 광고는 없습니다.</li>
+    </ul>
+
+    <h2>2-1. 방문 통계 (Google Analytics)</h2>
+    <ul>
+      <li>공식 배포 주소(techinpark.github.io/pickle-desk)는 몇 명이 쓰는지 알기 위해 <a href="https://policies.google.com/technologies/partner-sites">Google Analytics 4</a> 를 씁니다. Google Analytics 는 쿠키로 방문을 구분합니다.</li>
+      <li>보내는 것: 화면 이름(로그인·작업함 만들기·메인), "로그인함·작업함 만듦·작업 보냄(분류)·문장 복사함" 같은 이벤트 이름, 홈 화면 앱 여부, 그리고 Google Analytics 가 기본으로 모으는 기기·브라우저·대략적인 지역 정보.</li>
+      <li>보내지 않는 것: 이메일, 작업과 답변 내용, 시트 주소, 구글 토큰 등 구글 API 로 받은 모든 정보.</li>
+      <li>Google 신호와 광고 개인화는 꺼 두었습니다. 브라우저의 추적 방지 기능이나 <a href="https://tools.google.com/dlpage/gaoptout">Google Analytics 차단 부가기능</a>으로 보내지 않게 할 수 있습니다.</li>
     </ul>
 
     <h2>3. 구글 사용자 데이터 정책 준수</h2>
@@ -44,7 +52,8 @@
     <ul>
       <li><strong>Scopes</strong>: <code>drive.file</code> to create, read and write only the "Pickle Desk Tasks" sheet the app creates; <code>openid</code> and <code>email</code> to show your account and pick it again when signing back in.</li>
       <li><strong>Storage</strong>: tasks and replies live only in your own Google Sheet. The access token (valid for one hour), your email, the sheet ID and preferences are kept only in your browser's storage and are removed on sign-out.</li>
-      <li><strong>Sharing</strong>: no data is sent to the developer or any third party. No analytics, no ads.</li>
+      <li><strong>Sharing</strong>: information received from Google APIs (email, task contents, sheet address, tokens) is never sent, sold or shared with the developer or any third party. No ads.</li>
+      <li><strong>Usage analytics</strong>: the official deployment uses Google Analytics 4 (with cookies) to count usage. It sends screen names, event names such as "signed in", "created sheet", "sent task (category)", "copied prompt", whether the app runs from the home screen, and the device/browser/approximate location data Google Analytics collects by default. It never sends data received from Google APIs. Google signals and ad personalization are off. You can opt out with your browser's tracking protection or the <a href="https://tools.google.com/dlpage/gaoptout">Google Analytics opt-out add-on</a>.</li>
       <li>Use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</li>
       <li><strong>Revoking access</strong>: sign out, or remove Pickle Desk at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
       <li><strong>Contact</strong>: <a href="https://github.com/techinpark/pickle-desk/issues">GitHub issues</a>.</li>
