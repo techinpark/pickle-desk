@@ -135,6 +135,7 @@ describe('pickle jar', () => {
     await browser.addInitScript(`if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded', '1'); ${SIGNED_IN}; ${KO} }`)
     await app.open('/')
     await expect(screen.getByText('팀 회식 장소 예약')).toBeVisible()
+    await screen.getByTestId('open-menu').tap()
     await screen.getByTestId('open-settings').tap()
     await expect(screen.getByText(EMAIL)).toBeVisible()
     await screen.getByRole('button', '연결 확인').tap()
@@ -144,11 +145,13 @@ describe('pickle jar', () => {
     await screen.getByTestId('save-settings').tap()
     await expect(screen.getByText('Connected')).toBeVisible()
 
+    await screen.getByTestId('open-menu').tap()
     await screen.getByTestId('open-settings').tap()
     await screen.getByTestId('open-pickle').tap()
     await expect(screen.getByTestId('pickle-prompt')).toBeVisible()
     await screen.getByRole('button', 'Done').tap()
 
+    await screen.getByTestId('open-menu').tap()
     await screen.getByTestId('open-settings').tap()
     await screen.getByRole('button', 'Sign out').tap()
     await expect(screen.getByRole('button', 'Continue with Google')).toBeVisible()

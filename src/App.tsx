@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Composer } from './components/Composer'
 import { Header } from './components/Header'
 import { Icon } from './components/Icon'
+import { MenuSheet } from './components/MenuSheet'
 import { PickleSheet } from './components/PickleSheet'
 import { SettingsSheet } from './components/SettingsSheet'
 import { SetupScreen } from './components/SetupScreen'
@@ -54,6 +55,7 @@ export default function App() {
   const [filter, setFilter] = useState<Status | 'all'>('all')
   const [sheet, setSheet] = useState(false)
   const [pickle, setPickle] = useState(false)
+  const [menu, setMenu] = useState(false)
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null)
   const [freshIds, setFreshIds] = useState<Set<number>>(new Set())
   const [showJump, setShowJump] = useState(false)
@@ -190,7 +192,7 @@ export default function App() {
             counts={counts}
             filter={filter}
             onFilter={setFilter}
-            onSettings={() => setSheet(true)}
+            onMenu={() => setMenu(true)}
             showFilters={tasks.tasks.length > 0}
           />
           {(tasks.state === 'unauthorized' || tasks.state === 'missing' || tasks.state === 'error') && (
@@ -248,6 +250,20 @@ export default function App() {
           onSave={(s) => {
             update(s)
             setSheet(false)
+          }}
+        />
+      )}
+      {menu && session.phase === 'ready' && (
+        <MenuSheet
+          sheetUrl={session.workbook.url}
+          onClose={() => setMenu(false)}
+          onSettings={() => {
+            setMenu(false)
+            setSheet(true)
+          }}
+          onPickle={() => {
+            setMenu(false)
+            setPickle(true)
           }}
         />
       )}

@@ -1166,6 +1166,50 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.menu {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px 20px;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 12px;
+  border-radius: 16px;
+  color: var(--text);
+  text-decoration: none;
+  text-align: left;
+  word-break: keep-all;
+  transition: background 0.15s;
+}
+.menu-item:hover,
+.menu-item:active {
+  background: var(--agent);
+}
+.menu-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--agent);
+  color: var(--text-2);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.menu-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.menu-label {
+  font-size: 16px;
+  font-weight: 600;
+}
+.menu-help {
+  font-size: 13px;
+  color: var(--text-3);
+}
 .connect-help {
   align-self: center;
   font-size: 14px;

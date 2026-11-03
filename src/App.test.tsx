@@ -20,6 +20,12 @@ function returnFromGoogle(hash: (state: string) => string) {
 const tokenHash = (state: string) =>
   `#access_token=${FAKE_TOKEN}&expires_in=3599&state=${state}&scope=${encodeURIComponent('https://www.googleapis.com/auth/drive.file openid email')}`
 
+/** ≡ 메뉴 → 설정 */
+async function openSettings() {
+  await userEvent.click(screen.getByTestId('open-menu'))
+  await userEvent.click(screen.getByTestId('open-settings'))
+}
+
 let went: string[] = []
 beforeEach(() => {
   vi.stubGlobal('navigator', { ...navigator, languages: ['ko-KR'], clipboard: { writeText: vi.fn(async () => {}) } })
@@ -292,7 +298,7 @@ describe('polling', () => {
     fakeSheet([{ Task: 'A' }])
     render(<App />)
     await screen.findByText('A')
-    await userEvent.click(screen.getByTestId('open-settings'))
+    await openSettings()
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('radio', { name: '켜기' }))
     expect(requestPermission).toHaveBeenCalled()
     await waitFor(() => expect(within(screen.getByRole('dialog')).getByRole('radio', { name: '켜기' })).toHaveAttribute('aria-checked', 'true'))
@@ -307,7 +313,7 @@ describe('polling', () => {
     fakeSheet([{ Task: 'A' }])
     render(<App />)
     await screen.findByText('A')
-    await userEvent.click(screen.getByTestId('open-settings'))
+    await openSettings()
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('radio', { name: '켜기' }))
     expect(await screen.findByText(/알림이 차단돼 있어요/)).toBeInTheDocument()
     expect(within(screen.getByRole('dialog')).getByRole('radio', { name: '끄기' })).toHaveAttribute('aria-checked', 'true')
@@ -436,7 +442,7 @@ describe('settings', () => {
     fakeSheet([{ Task: 'A' }])
     render(<App />)
     await screen.findByText('A')
-    await userEvent.click(screen.getByTestId('open-settings'))
+    await openSettings()
     const dialog = screen.getByRole('dialog')
     await userEvent.click(within(dialog).getByRole('radio', { name: '10초' }))
     await userEvent.click(within(dialog).getByRole('radio', { name: 'English' }))
@@ -455,7 +461,7 @@ describe('settings', () => {
     fakeSheet([{ Task: 'A' }, { Task: 'B' }])
     render(<App />)
     await screen.findByText('A')
-    await userEvent.click(screen.getByTestId('open-settings'))
+    await openSettings()
     await userEvent.click(screen.getByRole('button', { name: '연결 확인' }))
     expect(await screen.findByText('연결됨 · 작업 2개')).toBeInTheDocument()
   })
@@ -465,11 +471,29 @@ describe('settings', () => {
     fakeSheet([{ Task: 'A' }])
     render(<App />)
     await screen.findByText('A')
-    await userEvent.click(screen.getByTestId('open-settings'))
+    await openSettings()
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('radio', { name: '30초' }))
     await userEvent.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(JSON.parse(localStorage.getItem(KEY)!).pollSeconds).not.toBe(30)
+  })
+
+  it('opens the menu with settings, the Pickle message, the sheet and an update request link', async () => {
+    connected()
+    fakeSheet([{ Task: 'A' }])
+    render(<App />)
+    await screen.findByText('A')
+    await userEvent.click(screen.getByTestId('open-menu'))
+    const menu = screen.getByRole('dialog', { name: '메뉴' })
+    expect(within(menu).getByRole('link', { name: /시트 열기/ })).toHaveAttribute('href', `https://docs.google.com/spreadsheets/d/${FAKE_SHEET_ID}/edit`)
+    const req = new URL(within(menu).getByTestId('request-update').getAttribute('href')!)
+    expect(req.origin + req.pathname).toBe('https://github.com/techinpark/pickle-desk/issues/new')
+    expect(req.searchParams.get('template')).toBe('request.yml')
+    expect(req.searchParams.get('env')).toMatch(/^v \S+ · /)
+    expect(req.href).not.toContain(encodeURIComponent(FAKE_EMAIL))
+    await userEvent.click(within(menu).getByRole('button', { name: /피클에게 보낼 문장/ }))
+    expect(await screen.findByTestId('pickle-prompt')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: '메뉴' })).not.toBeInTheDocument()
   })
 
   it('opens the Pickle message from settings', async () => {
@@ -477,7 +501,7 @@ describe('settings', () => {
     fakeSheet([{ Task: 'A' }])
     render(<App />)
     await screen.findByText('A')
-    await userEvent.click(screen.getByTestId('open-settings'))
+    await openSettings()
     await userEvent.click(screen.getByTestId('open-pickle'))
     expect((screen.getByTestId('pickle-prompt') as HTMLTextAreaElement).value).toContain(`/d/${FAKE_SHEET_ID}/edit`)
   })
@@ -487,7 +511,7 @@ describe('settings', () => {
     fakeSheet([{ Task: 'A' }])
     render(<App />)
     await screen.findByText('A')
-    await userEvent.click(screen.getByTestId('open-settings'))
+    await openSettings()
     expect(screen.getByTestId('account')).toHaveTextContent(FAKE_EMAIL)
     await userEvent.click(screen.getByRole('button', { name: '로그아웃' }))
     expect(await screen.findByTestId('login-google')).toBeInTheDocument()

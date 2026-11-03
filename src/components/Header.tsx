@@ -11,11 +11,11 @@ interface Props {
   counts: Record<Status, number>
   filter: Status | 'all'
   onFilter: (f: Status | 'all') => void
-  onSettings: () => void
+  onMenu: () => void
   showFilters: boolean
 }
 
-export function Header({ state, lastSyncedAt, counts, filter, onFilter, onSettings, showFilters }: Props) {
+export function Header({ state, lastSyncedAt, counts, filter, onFilter, onMenu, showFilters }: Props) {
   const { t, locale } = useI18n()
   const [, tick] = useState(0)
   useEffect(() => {
@@ -27,7 +27,7 @@ export function Header({ state, lastSyncedAt, counts, filter, onFilter, onSettin
   return (
     <header className="header">
       <div className="header-inner">
-        <button type="button" className="icon-btn" onClick={onSettings} aria-label={t('settings.title')} data-testid="open-settings">
+        <button type="button" className="icon-btn" onClick={onMenu} aria-label={t('menu.open')} data-testid="open-menu">
           <Icon name="menu" />
         </button>
         <div className="brand">

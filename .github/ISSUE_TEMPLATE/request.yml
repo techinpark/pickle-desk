@@ -1,0 +1,17 @@
+name: 업데이트 요청 · Request
+description: 원하는 기능이나 불편한 점을 알려 주세요. Tell us what you'd like or what went wrong.
+title: "[요청] "
+labels: ["request"]
+body:
+  - type: textarea
+    id: request
+    attributes:
+      label: 무엇이 있으면 좋겠나요? 또는 무엇이 불편했나요?
+      description: 편하게 적어 주세요. 화면 캡처를 붙여 넣어도 좋아요. (이메일·시트 주소 같은 개인정보는 적지 마세요)
+      placeholder: 예) 작업을 검색할 수 있으면 좋겠어요
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 앱 정보 (자동으로 채워져요)
