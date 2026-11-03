@@ -131,7 +131,7 @@ export default function App() {
   const phase = session.phase
   useEffect(() => {
     if (phase === 'loading') return
-    track({ name: 'screen_view', screen: phase === 'signedOut' ? 'sign_in' : phase === 'noWorkbook' ? 'setup' : 'main' })
+    track({ name: 'page_view', page_title: phase === 'signedOut' ? 'sign_in' : phase === 'noWorkbook' ? 'setup' : 'main' })
   }, [phase])
 
   const counts = useMemo(() => {

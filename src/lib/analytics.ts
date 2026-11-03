@@ -44,7 +44,7 @@ const standalone = () =>
   window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
 
 export type AppEvent =
-  | { name: 'screen_view'; screen: 'sign_in' | 'setup' | 'main' }
+  | { name: 'page_view'; page_title: 'sign_in' | 'setup' | 'main' }
   | { name: 'login' }
   | { name: 'sheet_create' }
   | { name: 'task_send'; category: string; source: string }
