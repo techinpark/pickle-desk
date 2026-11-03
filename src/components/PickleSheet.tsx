@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n/i18n'
 import { track } from '../lib/analytics'
-import { pickleInstruction } from '../lib/pickle'
+import { BACKFILL_OPTIONS, pickleInstruction, type BackfillDays } from '../lib/pickle'
 import { Icon } from './Icon'
+import { Segmented } from './Segmented'
 
 interface Props {
   sheetUrl: string
@@ -13,9 +14,10 @@ interface Props {
 export function PickleSheet({ sheetUrl, onClose }: Props) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
+  const [backfill, setBackfill] = useState<BackfillDays>(0)
   const panel = useRef<HTMLDivElement>(null)
   const area = useRef<HTMLTextAreaElement>(null)
-  const text = pickleInstruction(sheetUrl)
+  const text = pickleInstruction(sheetUrl, backfill)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -25,7 +27,7 @@ export function PickleSheet({ sheetUrl, onClose }: Props) {
   }, [onClose])
 
   const copy = async () => {
-    track({ name: 'prompt_copy' })
+    track({ name: 'prompt_copy', backfill_days: backfill })
     try {
       await navigator.clipboard.writeText(text)
     } catch {
@@ -58,6 +60,18 @@ export function PickleSheet({ sheetUrl, onClose }: Props) {
             <li>{t('pickle.step1')}</li>
             <li>{t('pickle.step2')}</li>
           </ol>
+          <div className="field">
+            <Segmented
+              label={t('pickle.backfill')}
+              value={backfill}
+              options={BACKFILL_OPTIONS.map((d) => ({ value: d, label: d === 0 ? t('pickle.backfill.none') : t('pickle.backfill.days', { n: d }) }))}
+              onChange={(v) => {
+                setBackfill(v)
+                setCopied(false)
+              }}
+            />
+            <p className="field-help">{t('pickle.backfill.help')}</p>
+          </div>
           <textarea ref={area} className="prompt" readOnly value={text} rows={9} data-testid="pickle-prompt" />
           <div className="test-row">
             <button type="button" className="btn btn-weak" onClick={copy} data-testid="copy-prompt">

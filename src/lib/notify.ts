@@ -32,14 +32,23 @@ export function worthNotifying(prev: Task | undefined, next: Task): boolean {
   return newReply || finished
 }
 
+/** 한 번에 이보다 많이 바뀌면(지난 기록 채우기 등) 알림을 하나로 묶는다. */
+export const NOTIFY_BATCH = 3
+
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
 
-export async function showTaskNotification(task: Task, title: string, fallbackBody: string) {
-  if (!notifyGranted()) return
+export function showTaskNotification(task: Task, title: string, fallbackBody: string) {
   const body = clip(task.reply.trim() || fallbackBody, 140)
+  return show(title, `${clip(task.task, 40)}\n${body}`, `task-${task.id}`)
+}
+
+export const showSummaryNotification = (title: string, body: string) => show(title, body, 'summary')
+
+async function show(title: string, body: string, tag: string) {
+  if (!notifyGranted()) return
   const options: NotificationOptions = {
-    body: `${clip(task.task, 40)}\n${body}`,
-    tag: `task-${task.id}`,
+    body,
+    tag,
     icon: `${import.meta.env.BASE_URL}icon-192.png`,
     badge: `${import.meta.env.BASE_URL}icon-192.png`,
     data: { url: window.location.origin + import.meta.env.BASE_URL },

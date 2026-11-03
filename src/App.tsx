@@ -10,7 +10,7 @@ import { Timeline } from './components/Timeline'
 import { I18nProvider } from './i18n/i18n'
 import { translator } from './i18n/translate'
 import { track } from './lib/analytics'
-import { showTaskNotification, worthNotifying } from './lib/notify'
+import { NOTIFY_BATCH, showSummaryNotification, showTaskNotification, worthNotifying } from './lib/notify'
 import { loadSettings, resolveLocale, saveSettings, type Settings } from './lib/settings'
 import { STATUSES, type Category, type Status, type Task, type TaskSource } from './lib/types'
 import { useSession } from './lib/useSession'
@@ -74,9 +74,9 @@ export default function App() {
     prevRef.current = new Map(tasks.tasks.map((x) => [x.id, x]))
     // 앱이 가려져 있는 동안 피클이 답하면 알린다. 처음 불러온 목록(prev 가 빈 경우)은 알리지 않는다.
     if (notifyOn.current && prev.size > 0 && document.visibilityState !== 'visible') {
-      for (const x of tasks.tasks) {
-        if (worthNotifying(prev.get(x.id), x)) void showTaskNotification(x, t('timeline.agent'), t(`status.${x.status}`))
-      }
+      const news = tasks.tasks.filter((x) => worthNotifying(prev.get(x.id), x))
+      if (news.length > NOTIFY_BATCH) void showSummaryNotification(t('timeline.agent'), t('notify.many', { n: news.length }))
+      else for (const x of news) void showTaskNotification(x, t('timeline.agent'), t(`status.${x.status}`))
     }
     if (ids.length === 0) return
     setFreshIds(new Set(ids))

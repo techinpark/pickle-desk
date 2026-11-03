@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import readme from '../../README.md?raw'
 import { FAKE_CONN, FAKE_TOKEN, fakeSheet } from '../test/fakeSheet'
-import { pickleInstruction } from './pickle'
+import { backfillLine, pickleInstruction } from './pickle'
 import {
   createTask,
   createWorkbook,
@@ -174,5 +174,14 @@ describe('pickle instruction', () => {
     const text = pickleInstruction('https://docs.google.com/spreadsheets/d/abc/edit')
     expect(text.split('\n')[0]).toBe('이 구글 시트가 내 작업함이야: https://docs.google.com/spreadsheets/d/abc/edit')
     for (const line of text.split('\n').slice(1)) expect(readme).toContain(line)
+  })
+
+  it('adds the one-time backfill line only when asked, matching README', () => {
+    expect(pickleInstruction('u').split('\n')).toHaveLength(8)
+    const withBackfill = pickleInstruction('u', 30).split('\n')
+    expect(withBackfill).toHaveLength(9)
+    expect(withBackfill[8]).toBe(backfillLine(30))
+    expect(withBackfill[8]).toContain('최근 30일')
+    expect(readme).toContain(backfillLine(7))
   })
 })

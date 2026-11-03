@@ -48,7 +48,7 @@ export type AppEvent =
   | { name: 'login' }
   | { name: 'sheet_create' }
   | { name: 'task_send'; category: string; source: string }
-  | { name: 'prompt_copy' }
+  | { name: 'prompt_copy'; backfill_days: number }
 
 /** 앱 이벤트를 남긴다. 구글 로그인에서 돌아온 직후 주소창의 토큰이 지워진 뒤에만 부른다. */
 export function track(e: AppEvent) {

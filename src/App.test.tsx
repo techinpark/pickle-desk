@@ -78,6 +78,23 @@ describe('sign-in and setup', () => {
     expect(screen.queryByTestId('login-google')).not.toBeInTheDocument()
   })
 
+  it('asks whether to bring in past history and adds it to the Pickle message', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
+    fakeSheet()
+    returnFromGoogle(tokenHash)
+    render(<App />)
+    await userEvent.click(await screen.findByTestId('create-sheet'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('지난 기록도 가져올까요?')).toBeInTheDocument()
+    const prompt = within(dialog).getByTestId('pickle-prompt') as HTMLTextAreaElement
+    expect(within(dialog).getByRole('radio', { name: '안 가져오기' })).toHaveAttribute('aria-checked', 'true')
+    expect(prompt.value).not.toContain('처음 한 번만')
+    await userEvent.click(within(dialog).getByRole('radio', { name: '최근 7일' }))
+    expect(prompt.value).toContain('7. 처음 한 번만: 최근 7일 동안')
+    await userEvent.click(within(dialog).getByTestId('copy-prompt'))
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('최근 7일 동안'))
+  })
+
   it('reuses the sheet it made before on a new device', async () => {
     localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
     const { state } = fakeSheet([{ Task: '예전 작업' }])
@@ -245,6 +262,25 @@ describe('polling', () => {
     })
     await waitFor(() => expect(showNotification).toHaveBeenCalledTimes(1))
     expect(showNotification).toHaveBeenCalledWith('피클', expect.objectContaining({ body: '아침 브리핑\n브리핑 준비했어요', tag: 'task-1' }))
+    vis.mockRestore()
+  })
+
+  it('bundles many updates at once (e.g. a history backfill) into one notification', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const showNotification = vi.fn(async () => {})
+    vi.stubGlobal('Notification', Object.assign(vi.fn(), { permission: 'granted', requestPermission: vi.fn() }))
+    vi.stubGlobal('navigator', { ...navigator, languages: ['ko-KR'], serviceWorker: { getRegistration: async () => ({ showNotification }) } })
+    connected({ pollSeconds: 5, notify: true })
+    const { db } = fakeSheet([{ Task: '지금 작업', Status: 'pending' }])
+    render(<App />)
+    await screen.findByText('지금 작업')
+    const vis = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    for (const n of [1, 2, 3, 4, 5]) db.push({ Id: '', Task: `지난 일 ${n}`, Status: 'done', Category: 'task', Reply: `결과 ${n}`, Result: '', CreatedAt: `2026-10-2${n} 09:00:00`, UpdatedAt: '' })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000)
+    })
+    await waitFor(() => expect(showNotification).toHaveBeenCalledTimes(1))
+    expect(showNotification).toHaveBeenCalledWith('피클', expect.objectContaining({ body: '피클이 작업 5개를 업데이트했어요.', tag: 'summary' }))
     vis.mockRestore()
   })
 

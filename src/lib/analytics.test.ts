@@ -27,7 +27,7 @@ describe('analytics', () => {
     const { track } = await load('G-TEST123')
     history.replaceState(null, '', '/?x=1#access_token=secret-token')
     track({ name: 'task_send', category: 'idea', source: 'composer' })
-    track({ name: 'prompt_copy' })
+    track({ name: 'prompt_copy', backfill_days: 0 })
     expect(document.querySelectorAll('script[src*="googletagmanager"]')).toHaveLength(1)
     const calls = window.dataLayer!.map((a) => Array.from(a as ArrayLike<unknown>))
     expect(calls.find((c) => c[0] === 'config')).toEqual(['config', 'G-TEST123', expect.objectContaining({ send_page_view: false, allow_google_signals: false })])
