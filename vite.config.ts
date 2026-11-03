@@ -55,7 +55,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
-    env: { VITE_GOOGLE_CLIENT_ID: 'test-client.apps.googleusercontent.com' },
+    env: { VITE_GOOGLE_CLIENT_ID: 'test-client.apps.googleusercontent.com', VITE_SITE_URL: 'https://techinpark.github.io/pickle-desk/' },
     include: ['src/**/*.test.{ts,tsx}'],
   },
 })

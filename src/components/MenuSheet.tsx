@@ -7,11 +7,12 @@ interface Props {
   sheetUrl: string
   onSettings: () => void
   onPickle: () => void
+  onShare: () => void
   onClose: () => void
 }
 
 /** ≡ 버튼 메뉴: 설정, 피클 문장, 시트 열기, 개발자에게 업데이트 요청. */
-export function MenuSheet({ sheetUrl, onSettings, onPickle, onClose }: Props) {
+export function MenuSheet({ sheetUrl, onSettings, onPickle, onShare, onClose }: Props) {
   const { t, locale } = useI18n()
   const panel = useRef<HTMLDivElement>(null)
 
@@ -62,6 +63,9 @@ export function MenuSheet({ sheetUrl, onSettings, onPickle, onClose }: Props) {
           <a className="menu-item" href={sheetUrl} target="_blank" rel="noreferrer" onClick={onClose}>
             {item('sheet', t('pickle.openSheet'))}
           </a>
+          <button type="button" className="menu-item" onClick={onShare} data-testid="share-app">
+            {item('share', t('menu.share'), t('menu.shareHelp'))}
+          </button>
           <a className="menu-item" href={requestUrl(locale)} target="_blank" rel="noreferrer" onClick={onClose} data-testid="request-update">
             {item('chat', t('menu.request'), t('menu.requestHelp'))}
           </a>

@@ -539,6 +539,18 @@ describe('settings', () => {
     expect(screen.queryByRole('dialog', { name: '메뉴' })).not.toBeInTheDocument()
   })
 
+  it('copies the app link to share with a friend', async () => {
+    connected()
+    fakeSheet([{ Task: 'A' }])
+    render(<App />)
+    await screen.findByText('A')
+    await userEvent.click(screen.getByTestId('open-menu'))
+    await userEvent.click(screen.getByTestId('share-app'))
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://techinpark.github.io/pickle-desk/')
+    expect(await screen.findByText('링크를 복사했어요. 친구에게 붙여 넣어 보내세요!')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: '메뉴' })).not.toBeInTheDocument()
+  })
+
   it('opens the Pickle message from settings', async () => {
     connected()
     fakeSheet([{ Task: 'A' }])

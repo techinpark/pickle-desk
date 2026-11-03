@@ -202,6 +202,20 @@ export default function App() {
     }
   }
 
+  /** 친구에게 공유: 앱 주소를 복사한다(링크를 붙여 넣으면 미리보기 이미지가 뜬다). */
+  const shareApp = async () => {
+    setMenu(false)
+    const url = import.meta.env.VITE_SITE_URL || window.location.origin + import.meta.env.BASE_URL
+    try {
+      await navigator.clipboard.writeText(url)
+      track({ name: 'share', method: 'clipboard' })
+      setToast({ text: t('share.copied') })
+    } catch {
+      track({ name: 'share', method: 'failed' })
+      setToast({ text: t('share.failed', { url }), error: true })
+    }
+  }
+
   const finishOnboarding = (skipped: boolean) => {
     track({ name: 'onboarding_done', skipped })
     setOnb(null)
@@ -313,6 +327,7 @@ export default function App() {
             setMenu(false)
             setPickle(true)
           }}
+          onShare={shareApp}
         />
       )}
       {pickle && session.phase === 'ready' && <PickleSheet sheetUrl={session.workbook.url} onClose={() => setPickle(false)} />}
