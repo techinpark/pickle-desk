@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -62,6 +63,19 @@ describe('sign-in and setup', () => {
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '완료' }))
     expect(await screen.findByText('아직 작업이 없어요')).toBeInTheDocument()
     expect(JSON.parse(localStorage.getItem('picklejar.token.v1')!)).toMatchObject({ accessToken: FAKE_TOKEN, email: FAKE_EMAIL })
+  })
+
+  it('signs in on the first try even when the startup effect runs twice (StrictMode)', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
+    fakeSheet()
+    returnFromGoogle(tokenHash)
+    render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    )
+    expect(await screen.findByTestId('create-sheet')).toBeInTheDocument()
+    expect(screen.queryByTestId('login-google')).not.toBeInTheDocument()
   })
 
   it('reuses the sheet it made before on a new device', async () => {

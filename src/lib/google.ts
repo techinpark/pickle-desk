@@ -85,8 +85,20 @@ export function parseRedirect(hash: string, expectedState: string | null): Redir
   return { kind: 'ok', accessToken: p.get('access_token')!, expiresIn: Number(p.get('expires_in') ?? 3600) }
 }
 
-/** 앱이 열릴 때 한 번 부른다. 돌아온 토큰을 저장하고 주소창에서 지운다. */
-export async function completeRedirect(): Promise<RedirectResult> {
+let pending: Promise<RedirectResult> | null = null
+
+/**
+ * 앱이 열릴 때 부른다. 돌아온 토큰을 저장하고 주소창에서 지운다.
+ * 주소창을 읽는 즉시 지우므로, 두 번 불려도(StrictMode 의 effect 재실행 등) 첫 호출의 결과를 같이 기다린다.
+ */
+export function completeRedirect(): Promise<RedirectResult> {
+  pending ??= consumeRedirect().finally(() => {
+    pending = null
+  })
+  return pending
+}
+
+async function consumeRedirect(): Promise<RedirectResult> {
   const r = parseRedirect(window.location.hash, sessionStorage.getItem(STATE_KEY))
   if (r.kind === 'none') return r
   sessionStorage.removeItem(STATE_KEY)
