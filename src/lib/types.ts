@@ -15,7 +15,7 @@ export interface Task {
   updatedAt: string | null
 }
 
-export type ConnectionState = 'idle' | 'connecting' | 'online' | 'unauthorized' | 'error'
+export type ConnectionState = 'idle' | 'connecting' | 'online' | 'unauthorized' | 'missing' | 'error'
 
 /** 작업을 어디서 보냈는지(입력창 / 빠른 지시). */
 export type TaskSource = 'composer' | 'preset'

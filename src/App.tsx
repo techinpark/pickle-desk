@@ -2,15 +2,16 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Composer } from './components/Composer'
 import { Header } from './components/Header'
 import { Icon } from './components/Icon'
-import { ConnectScreen } from './components/ConnectScreen'
+import { PickleSheet } from './components/PickleSheet'
 import { SettingsSheet } from './components/SettingsSheet'
+import { SetupScreen } from './components/SetupScreen'
+import { SignInScreen } from './components/SignInScreen'
 import { Timeline } from './components/Timeline'
 import { I18nProvider } from './i18n/i18n'
 import { translator } from './i18n/translate'
-import { loadConnection, parseConnectLink, saveConnection } from './lib/connection'
 import { loadSettings, resolveLocale, saveSettings, type Settings } from './lib/settings'
-import type { Connection } from './lib/sheet'
 import { STATUSES, type Category, type Status, type Task } from './lib/types'
+import { useSession } from './lib/useSession'
 import { changedIds, useTasks } from './lib/useTasks'
 
 const NEAR_BOTTOM = 160
@@ -40,25 +41,17 @@ export default function App() {
     saveSettings(s)
   }, [])
 
-  // 시트 메뉴의 연결 링크(#connect?u=…&k=…)로 열면 그 연결을 쓰고, 주소창에서 키를 지운다.
-  const [conn, setConn] = useState<Connection | null>(() => {
-    const link = parseConnectLink(window.location.hash)
-    if (!link) return loadConnection()
-    saveConnection(link)
-    history.replaceState(null, '', window.location.pathname + window.location.search)
-    return link
-  })
-  // 키가 거부되면 연결 화면으로 돌아가되, 입력값은 미리 채워 둔다.
-  const [reconnect, setReconnect] = useState(false)
-  const connect = useCallback((c: Connection | null) => {
-    saveConnection(c)
-    setConn(c)
-    setReconnect(false)
-  }, [])
-  const tasks = useTasks(reconnect ? null : conn, settings.pollSeconds)
+  const { session, conn, busy, signIn, reauth, logout, create, forgetWorkbook } = useSession()
+  const tasks = useTasks(conn, settings.pollSeconds)
+
+  // 토큰이 만료되면 조용히 다시 받아 온다(이미 동의한 계정이면 구글 화면을 잠깐 거쳐 바로 돌아옴).
+  useEffect(() => {
+    if (tasks.state === 'unauthorized') reauth()
+  }, [tasks.state, reauth])
 
   const [filter, setFilter] = useState<Status | 'all'>('all')
   const [sheet, setSheet] = useState(false)
+  const [pickle, setPickle] = useState(false)
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null)
   const [freshIds, setFreshIds] = useState<Set<number>>(new Set())
   const [showJump, setShowJump] = useState(false)
@@ -152,15 +145,25 @@ export default function App() {
     [tasks, t],
   )
 
-  const disconnect = () => {
-    connect(null)
+  const signOut = () => {
+    logout()
     setSheet(false)
+  }
+
+  const createSheet = async (title: string) => {
+    await create(title)
+    // 만들자마자 피클에게 보낼 문장을 보여 준다.
+    setPickle(true)
   }
 
   return (
     <I18nProvider locale={locale}>
-      {!conn || reconnect ? (
-        <ConnectScreen initial={reconnect ? conn : null} onConnect={connect} />
+      {session.phase === 'loading' ? (
+        <main className="connect" aria-busy="true" />
+      ) : session.phase === 'signedOut' ? (
+        <SignInScreen error={session.error} onSignIn={signIn} />
+      ) : session.phase === 'noWorkbook' ? (
+        <SetupScreen email={session.email} busy={busy} onCreate={createSheet} onSignOut={signOut} />
       ) : (
         <div className="app">
           <Header
@@ -172,13 +175,18 @@ export default function App() {
             onSettings={() => setSheet(true)}
             showFilters={tasks.tasks.length > 0}
           />
-          {(tasks.state === 'unauthorized' || tasks.state === 'error') && (
-            <div className={`banner${tasks.state === 'unauthorized' ? ' banner-danger' : ''}`} role="status">
+          {(tasks.state === 'unauthorized' || tasks.state === 'missing' || tasks.state === 'error') && (
+            <div className={`banner${tasks.state === 'error' ? '' : ' banner-danger'}`} role="status">
               <Icon name="alert" size={18} />
-              <span>{t(tasks.state === 'unauthorized' ? 'error.unauthorized' : 'error.network')}</span>
+              <span>{t(tasks.state === 'unauthorized' ? 'error.unauthorized' : tasks.state === 'missing' ? 'error.missing' : 'error.network')}</span>
               {tasks.state === 'unauthorized' && (
-                <button type="button" className="banner-btn" onClick={() => setReconnect(true)}>
-                  {t('error.reconnect')}
+                <button type="button" className="banner-btn" onClick={signIn}>
+                  {t('error.signIn')}
+                </button>
+              )}
+              {tasks.state === 'missing' && (
+                <button type="button" className="banner-btn" onClick={forgetWorkbook}>
+                  {t('error.newSheet')}
                 </button>
               )}
             </div>
@@ -204,21 +212,28 @@ export default function App() {
               {t('timeline.jumpLatest')}
             </button>
           )}
-          <Composer disabled={tasks.state === 'unauthorized'} onSubmit={submit} />
+          <Composer disabled={tasks.state === 'unauthorized' || tasks.state === 'missing'} onSubmit={submit} />
         </div>
       )}
-      {sheet && conn && !reconnect && (
+      {sheet && conn && session.phase === 'ready' && (
         <SettingsSheet
           settings={settings}
           conn={conn}
+          email={session.email}
+          sheetUrl={session.workbook.url}
           onClose={() => setSheet(false)}
-          onDisconnect={disconnect}
+          onPickle={() => {
+            setSheet(false)
+            setPickle(true)
+          }}
+          onSignOut={signOut}
           onSave={(s) => {
             update(s)
             setSheet(false)
           }}
         />
       )}
+      {pickle && session.phase === 'ready' && <PickleSheet sheetUrl={session.workbook.url} onClose={() => setPickle(false)} />}
       {toast && (
         <div className={`toast${toast.error ? ' toast-error' : ''}`} role="status" aria-live="polite">
           {toast.text}

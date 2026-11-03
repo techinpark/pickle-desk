@@ -124,11 +124,11 @@ describe('useTasks', () => {
     let maxActive = 0
     const pending: (() => void)[] = []
     const body = (token: string) =>
-      JSON.stringify({ ok: true, list: [{ Id: token === 'old' ? 1 : 2, Task: token }], total: 1, hasMore: false })
+      JSON.stringify({ values: [['Id', 'Task'], [token === 'old' ? 1 : 2, token]] })
     vi.stubGlobal(
       'fetch',
-      vi.fn((url: URL) => {
-        const token = url.searchParams.get('key')!
+      vi.fn((_: string, init: RequestInit) => {
+        const token = (init.headers as Record<string, string>).authorization.replace('Bearer ', '')
         active += 1
         maxActive = Math.max(maxActive, active)
         return new Promise<Response>((resolve) =>
@@ -139,7 +139,7 @@ describe('useTasks', () => {
         )
       }),
     )
-    const as = (token: string) => ({ url: FAKE_CONN.url, key: token })
+    const as = (token: string) => ({ spreadsheetId: FAKE_CONN.spreadsheetId, token: () => token })
     const { result, rerender } = renderHook(({ c }) => useTasks(c, 5), { initialProps: { c: as('old') } })
     await waitFor(() => expect(pending).toHaveLength(1))
     rerender({ c: as('new') })

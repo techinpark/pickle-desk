@@ -1,7 +1,7 @@
 import { web } from '@e2e-dev/web'
 import type { E2EConfig } from 'e2e'
 
-// 빌드 결과(vite preview)를 데스크톱·모바일 크기로 돈다. Apps Script 는 테스트 안에서 가짜 응답으로 바꾼다(실데이터를 건드리지 않음).
+// 빌드 결과(vite preview)를 데스크톱·모바일 크기로 돈다. 구글 API 는 테스트 안에서 가짜 응답으로 바꾼다(실데이터를 건드리지 않음).
 // E2E_URL 을 주면 배포된 주소를 그대로 연다.
 const app = process.env.E2E_URL
   ? { url: process.env.E2E_URL }

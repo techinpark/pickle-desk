@@ -30,9 +30,11 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // 앱 셸만 캐시한다. 시트(Apps Script) 응답은 다른 출처라 항상 네트워크로 받는다.
+        // 앱 셸만 캐시한다. 구글 API 응답은 다른 출처라 항상 네트워크로 받는다.
         // 글꼴은 서브셋 조각이 많아서 미리 받지 않고, 쓰일 때 캐시한다.
         globPatterns: ['**/*.{js,css,html,svg,png}'],
+        // 개인정보처리방침은 앱 셸로 바꾸지 않고 그대로 연다.
+        navigateFallbackDenylist: [/privacy\.html$/],
         runtimeCaching: [
           {
             urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.endsWith('.woff2'),
@@ -46,6 +48,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}', 'apps-script/**/*.test.ts'],
+    env: { VITE_GOOGLE_CLIENT_ID: 'test-client.apps.googleusercontent.com' },
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 })

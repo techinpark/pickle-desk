@@ -1,113 +1,121 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { FAKE_CONN, FAKE_URL } from '../test/fakeSheet'
-import { parseConnectLink } from './connection'
-import { createTask, isScriptUrl, listTasks, normalizeDate, REQUEST_TIMEOUT_MS, SheetError, toTask } from './sheet'
+import readme from '../../README.md?raw'
+import { FAKE_CONN, FAKE_TOKEN, fakeSheet } from '../test/fakeSheet'
+import { pickleInstruction } from './pickle'
+import {
+  createTask,
+  createWorkbook,
+  findWorkbook,
+  listTasks,
+  normalizeDate,
+  parseRows,
+  REQUEST_TIMEOUT_MS,
+  sheetTime,
+  SheetError,
+  toStatus,
+} from './sheet'
 
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
 })
 
-function stubFetch(body: unknown, status = 200) {
-  const spy = vi.fn<(input: URL, init?: RequestInit) => Promise<Response>>(async () => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status }))
-  vi.stubGlobal('fetch', spy)
-  return spy
-}
+const HEAD = ['Id', 'Task', 'Status', 'Category', 'Reply', 'Result', 'CreatedAt', 'UpdatedAt']
+const kindOf = async (p: Promise<unknown>) => ((await p.catch((e: unknown) => e)) as SheetError).kind
 
-describe('toTask', () => {
-  it('maps sheet columns', () => {
-    expect(
-      toTask({ Id: 3, Task: 'do it', Status: 'running', Reply: 'on it', Result: 'r', Category: 'briefing', CreatedAt: '2026-10-28 01:12:22Z' }),
-    ).toEqual({
-      id: 3,
-      task: 'do it',
-      status: 'running',
-      reply: 'on it',
-      result: 'r',
-      category: 'briefing',
-      createdAt: '2026-10-28T01:12:22.000Z',
-      updatedAt: null,
-    })
-  })
-
-  it('falls back on unknown status, category and empty fields', () => {
-    const t = toTask({ Id: 1, Status: 'weird', Category: null, Task: null })
-    expect(t.status).toBe('pending')
-    expect(t.category).toBe('task')
-    expect(t.task).toBe('')
-    expect(t.createdAt).toBe(new Date(0).toISOString())
+describe('parseRows', () => {
+  it('maps columns by header name, skips empty rows and keeps rows without an Id', () => {
+    const rows = parseRows([
+      ['Task', 'Id', 'Status', 'Reply'], // 순서가 달라도 머리글 이름으로 찾는다
+      ['A', 3, '완료', '했어요'],
+      ['', 4, 'done', ''],
+      ['B', '', '진행 중'],
+    ])
+    expect(rows.map((r) => [r.row, r.id, r.task.task, r.task.status, r.task.reply])).toEqual([
+      [2, 3, 'A', 'done', '했어요'],
+      [4, null, 'B', 'running', ''],
+    ])
+    expect(rows[0].task.category).toBe('task')
   })
 })
 
-describe('normalizeDate', () => {
-  it('parses space-separated timestamps and rejects garbage', () => {
+describe('toStatus / normalizeDate / sheetTime', () => {
+  it('understands Korean and loose statuses', () => {
+    expect(['대기', '진행중', '완료', '실패', 'DONE', 'completed', '???'].map(toStatus)).toEqual([
+      'pending',
+      'running',
+      'done',
+      'failed',
+      'done',
+      'done',
+      'pending',
+    ])
+  })
+
+  it('reads strings and sheet serial numbers', () => {
     expect(normalizeDate('2026-10-28 09:00:00+09:00')).toBe('2026-10-28T00:00:00.000Z')
+    expect(normalizeDate(46000)).toBe(new Date(2025, 11, 9).toISOString())
     expect(normalizeDate('어제')).toBeNull()
-    expect(normalizeDate(null)).toBeNull()
+    expect(normalizeDate('')).toBeNull()
   })
-})
 
-describe('isScriptUrl', () => {
-  it('accepts only Apps Script web app URLs', () => {
-    expect(isScriptUrl(FAKE_URL)).toBe(true)
-    expect(isScriptUrl('https://script.google.com/macros/s/abc/dev')).toBe(false)
-    expect(isScriptUrl('http://script.google.com/macros/s/abc/exec')).toBe(false)
-    expect(isScriptUrl('https://evil.example/macros/s/abc/exec')).toBe(false)
-    expect(isScriptUrl('not a url')).toBe(false)
-  })
-})
-
-describe('parseConnectLink', () => {
-  it('reads the url and key from the sheet menu link', () => {
-    expect(parseConnectLink(`#connect?u=${encodeURIComponent(FAKE_URL)}&k=abc`)).toEqual({ url: FAKE_URL, key: 'abc' })
-  })
-  it('ignores other hashes and links to other hosts', () => {
-    expect(parseConnectLink('#settings')).toBeNull()
-    expect(parseConnectLink(`#connect?u=${encodeURIComponent('https://evil.example/x')}&k=abc`)).toBeNull()
-    expect(parseConnectLink(`#connect?u=${encodeURIComponent(FAKE_URL)}`)).toBeNull()
+  it('writes local time that normalizeDate reads back', () => {
+    const d = new Date(2026, 10, 3, 16, 5, 9)
+    expect(sheetTime(d)).toBe('2026-11-03 16:05:09')
+    expect(normalizeDate(sheetTime(d))).toBe(d.toISOString())
   })
 })
 
 describe('listTasks', () => {
-  it('sends the key as a query parameter without custom headers (no CORS preflight)', async () => {
-    const spy = stubFetch({ ok: true, list: [{ Id: 1, Task: 'a' }], total: 1, hasMore: false })
-    const page = await listTasks(FAKE_CONN, { beforeId: 9, limit: 5 })
-    const [url, init = {}] = spy.mock.calls[0]
-    expect(url.searchParams.get('action')).toBe('list')
-    expect(url.searchParams.get('key')).toBe(FAKE_CONN.key)
-    expect(url.searchParams.get('beforeId')).toBe('9')
-    expect(url.searchParams.get('limit')).toBe('5')
-    expect(init.headers).toBeUndefined()
-    expect(page).toMatchObject({ total: 1, hasMore: false })
-    expect(page.tasks[0].task).toBe('a')
+  it('returns newest first with paging and sends the bearer token', async () => {
+    const { fetchMock } = fakeSheet([{ Task: 'a' }, { Task: 'b' }, { Task: 'c' }])
+    const page = await listTasks(FAKE_CONN, { limit: 2 })
+    expect(page.tasks.map((t) => t.task)).toEqual(['c', 'b'])
+    expect(page).toMatchObject({ total: 3, hasMore: true })
+    const older = await listTasks(FAKE_CONN, { beforeId: 2 })
+    expect(older.tasks.map((t) => t.task)).toEqual(['a'])
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(init.headers).toMatchObject({ authorization: `Bearer ${FAKE_TOKEN}` })
   })
 
-  it('maps a rejected key to unauthorized', async () => {
-    stubFetch({ ok: false, error: 'unauthorized' })
-    const e = await listTasks(FAKE_CONN).catch((x: unknown) => x)
-    expect(e).toBeInstanceOf(SheetError)
-    expect((e as SheetError).kind).toBe('unauthorized')
-    expect((e as SheetError).unauthorized).toBe(true)
+  it('fills in Ids for rows Pickle added without one', async () => {
+    const { db } = fakeSheet([{ Id: 5, Task: 'A' }, { Id: '', Task: 'B' }, { Id: '', Task: 'C' }])
+    const page = await listTasks(FAKE_CONN)
+    expect(page.tasks.map((t) => [t.id, t.task])).toEqual([
+      [7, 'C'],
+      [6, 'B'],
+      [5, 'A'],
+    ])
+    expect(db.map((r) => r.Id)).toEqual([5, 6, 7])
   })
 
-  it('treats an HTML page (Google sign-in) as an access problem', async () => {
-    stubFetch('<html>Sign in</html>')
-    const e = (await listTasks(FAKE_CONN).catch((x: unknown) => x)) as SheetError
-    expect(e.kind).toBe('access')
+  it('maps API errors to kinds', async () => {
+    const { state } = fakeSheet()
+    state.reject = true
+    expect(await kindOf(listTasks(FAKE_CONN))).toBe('unauthorized')
+    state.reject = false
+    state.missing = true
+    expect(await kindOf(listTasks(FAKE_CONN))).toBe('notFound')
+    state.missing = false
+    state.offline = true
+    expect(await kindOf(listTasks(FAKE_CONN))).toBe('network')
   })
 
-  it('passes script errors through as server errors', async () => {
-    stubFetch({ ok: false, error: 'no_sheet' })
-    const e = (await listTasks(FAKE_CONN).catch((x: unknown) => x)) as SheetError
-    expect(e.kind).toBe('server')
-    expect(e.message).toBe('no_sheet')
+  it('treats a renamed Tasks tab as a missing sheet', async () => {
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ error: { message: 'Unable to parse range: Tasks!A1:H' } }), { status: 400 }))
+    expect(await kindOf(listTasks(FAKE_CONN))).toBe('notFound')
   })
 
-  it('never sends the key to a non Apps Script URL', async () => {
-    const spy = stubFetch({ ok: true, list: [], total: 0, hasMore: false })
-    const e = (await listTasks({ url: 'https://evil.example/exec', key: 'k' }).catch((x: unknown) => x)) as SheetError
-    expect(e.kind).toBe('access')
-    expect(spy).not.toHaveBeenCalled()
+  it('does not call the API when the token is gone', async () => {
+    const { fetchMock } = fakeSheet()
+    const conn = {
+      ...FAKE_CONN,
+      token: () => {
+        throw new SheetError('unauthorized')
+      },
+    }
+    expect(await kindOf(listTasks(conn))).toBe('unauthorized')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('times out a hung request', async () => {
@@ -119,20 +127,52 @@ describe('listTasks', () => {
           new Promise((_r, reject) => init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))),
       ),
     )
-    const p = listTasks(FAKE_CONN).catch((x: unknown) => x)
+    const p = kindOf(listTasks(FAKE_CONN))
     await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS + 1)
-    expect(((await p) as SheetError).kind).toBe('timeout')
+    expect(await p).toBe('timeout')
   })
 })
 
 describe('createTask', () => {
-  it('posts JSON as text/plain with the key in the body', async () => {
-    const spy = stubFetch({ ok: true, Id: 42 })
-    expect(await createTask(FAKE_CONN, '보고서 써 줘', 'idea')).toBe(42)
-    const [url, init = {}] = spy.mock.calls[0]
-    expect(String(url)).toBe(FAKE_URL)
-    expect(init.method).toBe('POST')
-    expect(init.headers).toEqual({ 'content-type': 'text/plain;charset=utf-8' })
-    expect(JSON.parse(String(init.body))).toEqual({ action: 'create', task: '보고서 써 줘', category: 'idea', key: FAKE_CONN.key })
+  it('appends a pending row with the next Id as RAW text (no formulas)', async () => {
+    const { db, fetchMock } = fakeSheet([{ Id: 7, Task: 'A' }])
+    expect(await createTask(FAKE_CONN, '=IMPORTXML("x")', 'idea')).toBe(8)
+    expect(db[1]).toMatchObject({ Id: 8, Task: '=IMPORTXML("x")', Status: 'pending', Category: 'idea', Reply: '' })
+    expect(normalizeDate(db[1].CreatedAt)).not.toBeNull()
+    const append = fetchMock.mock.calls.find(([u]) => String(u).includes(':append'))!
+    expect(String(append[0])).toContain('valueInputOption=RAW')
+  })
+})
+
+describe('workbook', () => {
+  it('creates the Tasks sheet with headers, dropdowns and an app marker', async () => {
+    const { fetchMock, state } = fakeSheet()
+    const w = await createWorkbook(FAKE_CONN.token, 'Pickle Jar 작업함')
+    expect(w).toEqual({ spreadsheetId: 'new-sheet', url: 'https://docs.google.com/spreadsheets/d/new-sheet/edit' })
+    const body = state.created[0] as {
+      properties: { title: string }
+      sheets: { properties: { title: string }; data: { rowData: { values: { userEnteredValue: { stringValue: string } }[] }[] }[] }[]
+    }
+    expect(body.properties.title).toBe('Pickle Jar 작업함')
+    expect(body.sheets[0].properties.title).toBe('Tasks')
+    expect(body.sheets[0].data[0].rowData[0].values.map((v) => v.userEnteredValue.stringValue)).toEqual(HEAD)
+    const patch = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH')!
+    expect(JSON.parse(String((patch[1] as RequestInit).body))).toEqual({ appProperties: { pickleJar: 'tasks' } })
+  })
+
+  it('finds the newest workbook the app made, or nothing', async () => {
+    const { state, fetchMock } = fakeSheet()
+    expect(await findWorkbook(FAKE_CONN.token)).toBeNull()
+    state.files = ['old-one']
+    expect(await findWorkbook(FAKE_CONN.token)).toEqual({ spreadsheetId: 'old-one', url: 'https://docs.google.com/spreadsheets/d/old-one/edit' })
+    expect(decodeURIComponent(String(fetchMock.mock.calls[0][0]))).toContain("appProperties has { key='pickleJar' and value='tasks' }")
+  })
+})
+
+describe('pickle instruction', () => {
+  it('includes the sheet link and matches README step 5 line for line', () => {
+    const text = pickleInstruction('https://docs.google.com/spreadsheets/d/abc/edit')
+    expect(text.split('\n')[0]).toBe('이 구글 시트가 내 작업함이야: https://docs.google.com/spreadsheets/d/abc/edit')
+    for (const line of text.split('\n').slice(1)) expect(readme).toContain(line)
   })
 })

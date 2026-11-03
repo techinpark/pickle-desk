@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n/i18n'
-import { errorKey } from '../lib/connection'
-import { listTasks, type Connection } from '../lib/sheet'
+import { listTasks, SheetError, type Connection } from '../lib/sheet'
 import { POLL_OPTIONS, type Settings } from '../lib/settings'
 import { Icon } from './Icon'
 import { Segmented } from './Segmented'
@@ -9,14 +8,17 @@ import { Segmented } from './Segmented'
 interface Props {
   settings: Settings
   conn: Connection
+  email: string | null
+  sheetUrl: string
   onSave: (s: Settings) => void
-  onDisconnect: () => void
+  onPickle: () => void
+  onSignOut: () => void
   onClose: () => void
 }
 
 type TestState = { kind: 'idle' } | { kind: 'running' } | { kind: 'ok'; n: number } | { kind: 'fail'; msg: string }
 
-export function SettingsSheet({ settings, conn, onSave, onDisconnect, onClose }: Props) {
+export function SettingsSheet({ settings, conn, email, sheetUrl, onSave, onPickle, onSignOut, onClose }: Props) {
   const { t } = useI18n()
   const [draft, setDraft] = useState(settings)
   const [test, setTest] = useState<TestState>({ kind: 'idle' })
@@ -42,7 +44,7 @@ export function SettingsSheet({ settings, conn, onSave, onDisconnect, onClose }:
       const page = await listTasks(conn, { limit: 1 })
       setTest({ kind: 'ok', n: page.total })
     } catch (e) {
-      setTest({ kind: 'fail', msg: t(errorKey(e)) })
+      setTest({ kind: 'fail', msg: e instanceof SheetError && e.unauthorized ? t('error.unauthorized') : e instanceof Error ? e.message : '?' })
     }
   }
 
@@ -68,15 +70,25 @@ export function SettingsSheet({ settings, conn, onSave, onDisconnect, onClose }:
         <div className="sheet-body">
           <section className="group">
             <h3>{t('settings.connection')}</h3>
-            <div className="endpoint" data-testid="account">
-              {conn.url}
-            </div>
+            {email && (
+              <div className="endpoint" data-testid="account">
+                {email}
+              </div>
+            )}
             <div className="test-row">
               <button type="button" className="btn btn-weak" onClick={runTest} disabled={test.kind === 'running'}>
                 {t('settings.test')}
               </button>
               {test.kind === 'ok' && <span className="test-ok">{t('settings.testOk', { n: test.n })}</span>}
               {test.kind === 'fail' && <span className="test-fail">{t('settings.testFail', { msg: test.msg })}</span>}
+            </div>
+            <div className="test-row">
+              <button type="button" className="btn btn-weak" onClick={onPickle} data-testid="open-pickle">
+                {t('settings.pickle')}
+              </button>
+              <a className="btn btn-weak" href={sheetUrl} target="_blank" rel="noreferrer">
+                {t('pickle.openSheet')}
+              </a>
             </div>
           </section>
 
@@ -109,7 +121,7 @@ export function SettingsSheet({ settings, conn, onSave, onDisconnect, onClose }:
             />
           </section>
 
-          <button type="button" className="text-danger" onClick={onDisconnect}>
+          <button type="button" className="text-danger" onClick={onSignOut}>
             {t('settings.signOut')}
           </button>
         </div>

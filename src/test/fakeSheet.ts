@@ -1,67 +1,91 @@
 import { vi } from 'vitest'
-import { CONN_KEY } from '../lib/connection'
+import { HEADERS, sheetUrl } from '../lib/sheet'
 
-export const FAKE_URL = 'https://script.google.com/macros/s/AKfake123/exec'
-export const FAKE_SHEET_KEY = 'fake-sheet-key'
-export const FAKE_CONN = { url: FAKE_URL, key: FAKE_SHEET_KEY }
+export const FAKE_TOKEN = 'fake-access-token'
+export const FAKE_EMAIL = 'tester@example.com'
+export const FAKE_SHEET_ID = 'sheet-123'
+export const FAKE_CONN = { spreadsheetId: FAKE_SHEET_ID, token: () => FAKE_TOKEN }
 
-/** 저장된 연결이 있는 상태로 시작한다. */
-export function storeFakeConnection(key = FAKE_SHEET_KEY) {
-  localStorage.setItem(CONN_KEY, JSON.stringify({ url: FAKE_URL, key }))
+/** 로그인돼 있고 작업함도 기억하는 상태로 시작한다. */
+export function storeFakeSession(opts: { expired?: boolean; workbook?: boolean } = {}) {
+  localStorage.setItem(
+    'picklejar.token.v1',
+    JSON.stringify({ accessToken: FAKE_TOKEN, expiresAt: Date.now() + (opts.expired ? -1000 : 3_600_000), email: FAKE_EMAIL }),
+  )
+  if (opts.workbook !== false) {
+    localStorage.setItem('picklejar.workbook.v1', JSON.stringify({ spreadsheetId: FAKE_SHEET_ID, url: sheetUrl(FAKE_SHEET_ID), email: FAKE_EMAIL }))
+  }
 }
 
 export interface Rec {
-  Id: number
+  Id: number | ''
   Task: string
   Status: string
-  Reply: string | null
-  Result: string | null
+  Reply: string
+  Result: string
   Category: string
-  CreatedAt: string
-  UpdatedAt: string | null
+  CreatedAt: string | number
+  UpdatedAt: string
 }
 
-const json = (o: unknown) => new Response(JSON.stringify(o), { status: 200 })
+const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status })
+const err = (status: number, message = 'error') => json({ error: { code: status, message } }, status)
 
-/** 메모리 안의 Apps Script 웹 앱 흉내. fetch 를 바꿔 끼운다. state.reject 면 연결 키를 거부한다. */
+/**
+ * 메모리 안의 구글 시트·드라이브 API 흉내. fetch 를 바꿔 끼운다.
+ * db 는 Tasks 탭의 행(머리글 제외)이고, 피클이 쓴 것처럼 테스트에서 직접 고친다.
+ */
 export function fakeSheet(initial: Partial<Rec>[] = []) {
-  let nextId = 100
   const db: Rec[] = initial.map((r, i) => ({
     Id: r.Id ?? i + 1,
     Task: r.Task ?? `task ${i + 1}`,
     Status: r.Status ?? 'pending',
-    Reply: r.Reply ?? null,
-    Result: r.Result ?? null,
+    Reply: r.Reply ?? '',
+    Result: r.Result ?? '',
     Category: r.Category ?? 'task',
-    CreatedAt: r.CreatedAt ?? `2026-10-28T0${i}:00:00.000Z`,
-    UpdatedAt: null,
+    CreatedAt: r.CreatedAt ?? `2026-10-28 0${i}:00:00`,
+    UpdatedAt: r.UpdatedAt ?? '',
   }))
-  const state = { offline: false, reject: false, html: false }
+  const state = { offline: false, reject: false, missing: false, files: [] as string[], created: [] as unknown[] }
+  const grid = () => [[...HEADERS], ...db.map((r) => HEADERS.map((h) => r[h]))]
+
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
     if (state.offline) throw new TypeError('Failed to fetch')
-    if (state.html) return new Response('<html>Sign in</html>', { status: 200 })
     const url = new URL(String(input))
-    const p: Record<string, string> =
-      (init.method ?? 'GET') === 'POST' ? JSON.parse(String(init.body)) : Object.fromEntries(url.searchParams)
-    if (state.reject || p.key !== FAKE_SHEET_KEY) return json({ ok: false, error: 'unauthorized' })
-    if (p.action === 'create') {
-      const rec: Rec = {
-        Id: nextId++,
-        Task: p.task,
-        Status: 'pending',
-        Category: p.category,
-        Reply: null,
-        Result: null,
-        CreatedAt: '2026-10-28T09:00:00.000Z',
-        UpdatedAt: null,
-      }
-      db.push(rec)
-      return json({ ok: true, Id: rec.Id })
+    const method = init.method ?? 'GET'
+    const body = init.body ? JSON.parse(String(init.body)) : undefined
+    if (url.hostname === 'oauth2.googleapis.com') return json({})
+    const auth = (init.headers as Record<string, string> | undefined)?.authorization
+    if (state.reject || auth !== `Bearer ${FAKE_TOKEN}`) return err(401, 'Invalid Credentials')
+    if (url.hostname === 'openidconnect.googleapis.com') return json({ email: FAKE_EMAIL })
+
+    if (url.hostname === 'www.googleapis.com') {
+      if (method === 'GET') return json({ files: state.files.map((id) => ({ id })) })
+      return json({ id: url.pathname.split('/').pop() })
     }
-    const limit = Number(p.limit ?? 30)
-    const rows = p.beforeId ? db.filter((r) => r.Id < Number(p.beforeId)) : db
-    const sorted = [...rows].sort((a, b) => b.Id - a.Id)
-    return json({ ok: true, list: sorted.slice(0, limit), total: db.length, hasMore: sorted.length > limit })
+
+    const path = decodeURIComponent(url.pathname)
+    if (path === '/v4/spreadsheets' && method === 'POST') {
+      state.created.push(body)
+      return json({ spreadsheetId: 'new-sheet', sheets: [{ properties: { sheetId: 7 } }] })
+    }
+    if (path.endsWith(':batchUpdate') && !path.includes('/values')) return json({})
+    if (state.missing) return err(404, 'Requested entity was not found.')
+    if (path.endsWith('/values:batchUpdate')) {
+      for (const d of body.data as { range: string; values: unknown[][] }[]) {
+        const row = Number(/A(\d+)$/.exec(d.range)![1])
+        db[row - 2].Id = d.values[0][0] as number
+      }
+      return json({})
+    }
+    if (path.endsWith(':append')) {
+      const [v] = body.values as unknown[][]
+      db.push(Object.fromEntries(HEADERS.map((h, i) => [h, v[i]])) as unknown as Rec)
+      return json({})
+    }
+    if (path.includes('/values/Tasks!A2:A')) return json({ values: [db.map((r) => r.Id)] })
+    if (path.includes('/values/Tasks!A1:H')) return json({ values: grid() })
+    return err(400, `unhandled ${method} ${path}`)
   })
   vi.stubGlobal('fetch', fetchMock)
   return { db, fetchMock, state }

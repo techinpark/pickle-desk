@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pickle Jar 개인정보처리방침 · Privacy Policy</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: system-ui, -apple-system, sans-serif; max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; line-height: 1.7; word-break: keep-all; }
+      h1 { font-size: 24px; } h2 { font-size: 18px; margin-top: 32px; }
+      code { font-size: 0.9em; }
+    </style>
+  </head>
+  <body>
+    <h1>Pickle Jar 개인정보처리방침</h1>
+    <p>시행일: 2026년 11월 3일</p>
+    <p>Pickle Jar(이하 "앱")는 사용자의 구글 드라이브에 있는 시트로 AI 비서에게 일을 맡기고 답변을 확인하는 오픈소스 웹 앱입니다. 앱에는 운영 서버가 없고, 모든 처리는 사용자의 브라우저에서 이루어집니다.</p>
+
+    <h2>1. 받는 권한과 쓰는 곳</h2>
+    <ul>
+      <li><code>drive.file</code>: 앱이 직접 만든 "Pickle Jar 작업함" 시트를 만들고, 읽고, 쓰는 데만 씁니다. 드라이브의 다른 파일은 볼 수 없습니다.</li>
+      <li><code>openid</code>, <code>email</code>: 설정 화면에 로그인한 계정을 보여 주고, 다시 로그인할 때 같은 계정을 고르는 데 씁니다.</li>
+    </ul>
+
+    <h2>2. 저장하는 정보</h2>
+    <ul>
+      <li>작업과 답변은 <strong>사용자 본인의 구글 시트에만</strong> 저장됩니다.</li>
+      <li>구글 액세스 토큰(1시간 유효), 이메일 주소, 작업함 시트 ID, 화면 설정은 <strong>사용자 기기의 브라우저 저장소</strong>에만 남습니다. 로그아웃하면 토큰과 시트 ID를 지우고 토큰을 구글에 반납합니다.</li>
+      <li>앱 개발자나 제3자에게 전송·판매·공유하는 정보는 없습니다. 분석 도구나 광고를 쓰지 않습니다.</li>
+    </ul>
+
+    <h2>3. 구글 사용자 데이터 정책 준수</h2>
+    <p>앱이 구글 API 로 받은 정보의 사용과 다른 앱으로의 전송은 <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>(제한적 사용 요건 포함)를 따릅니다.</p>
+
+    <h2>4. 권한 철회</h2>
+    <p>앱에서 로그아웃하거나, <a href="https://myaccount.google.com/permissions">Google 계정 → 보안 → 서드 파티 연결</a>에서 Pickle Jar 의 접근 권한을 언제든 삭제할 수 있습니다. 작업함 시트는 드라이브에서 직접 지우면 됩니다.</p>
+
+    <h2>5. 문의</h2>
+    <p><a href="https://github.com/techinpark/pickle-jar/issues">GitHub 이슈</a>로 문의해 주세요.</p>
+
+    <hr />
+    <h1>Privacy Policy (English)</h1>
+    <p>Pickle Jar is an open-source web app with no backend server. Everything runs in your browser.</p>
+    <ul>
+      <li><strong>Scopes</strong>: <code>drive.file</code> to create, read and write only the "Pickle Jar Tasks" sheet the app creates; <code>openid</code> and <code>email</code> to show your account and pick it again when signing back in.</li>
+      <li><strong>Storage</strong>: tasks and replies live only in your own Google Sheet. The access token (valid for one hour), your email, the sheet ID and preferences are kept only in your browser's storage and are removed on sign-out.</li>
+      <li><strong>Sharing</strong>: no data is sent to the developer or any third party. No analytics, no ads.</li>
+      <li>Use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</li>
+      <li><strong>Revoking access</strong>: sign out, or remove Pickle Jar at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+      <li><strong>Contact</strong>: <a href="https://github.com/techinpark/pickle-jar/issues">GitHub issues</a>.</li>
+    </ul>
+  </body>
+</html>

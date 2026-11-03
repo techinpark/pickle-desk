@@ -76,8 +76,8 @@ export function useTasks(conn: Connection | null, pollSeconds: number) {
       })
     } catch (e) {
       if (g !== gen.current) return
-      const unauthorized = e instanceof SheetError && e.unauthorized
-      setS((p) => ({ ...p, state: unauthorized ? 'unauthorized' : 'error', initialLoading: false }))
+      const state = e instanceof SheetError && e.unauthorized ? 'unauthorized' : e instanceof SheetError && e.kind === 'notFound' ? 'missing' : 'error'
+      setS((p) => ({ ...p, state, initialLoading: false }))
     } finally {
       if (inFlight.current === g) inFlight.current = null
     }
@@ -99,8 +99,8 @@ export function useTasks(conn: Connection | null, pollSeconds: number) {
     if (conn) void refresh()
   }, [conn, refresh])
 
-  // 폴링: 탭이 가려져 있으면 쉬고, 다시 보이면 바로 새로고침한다. 토큰이 거부되면 멈춘다.
-  const stopped = s.state === 'unauthorized' || !conn
+  // 폴링: 탭이 가려져 있으면 쉬고, 다시 보이면 바로 새로고침한다. 토큰이 거부되거나 시트가 사라지면 멈춘다.
+  const stopped = s.state === 'unauthorized' || s.state === 'missing' || !conn
   useEffect(() => {
     if (stopped) return
     const id = window.setInterval(() => {

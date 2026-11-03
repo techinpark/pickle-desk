@@ -3,89 +3,118 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { KEY } from './lib/settings'
-import { CONN_KEY } from './lib/connection'
-import { FAKE_SHEET_KEY, FAKE_URL, fakeSheet, storeFakeConnection } from './test/fakeSheet'
+import { nav } from './lib/google'
+import { FAKE_EMAIL, FAKE_SHEET_ID, FAKE_TOKEN, fakeSheet, storeFakeSession } from './test/fakeSheet'
 
 function connected(extra: Record<string, unknown> = {}) {
   localStorage.setItem(KEY, JSON.stringify({ locale: 'ko', ...extra }))
-  storeFakeConnection()
+  storeFakeSession()
 }
 
-async function connectByForm(url = FAKE_URL, key = FAKE_SHEET_KEY) {
-  await userEvent.type(await screen.findByTestId('connect-url'), url)
-  await userEvent.type(screen.getByTestId('connect-key'), key)
-  await userEvent.click(screen.getByTestId('connect-submit'))
+/** 구글에서 돌아온 상태를 꾸민다: 시작할 때 저장한 state 와 #access_token 이 붙은 주소. */
+function returnFromGoogle(hash: (state: string) => string) {
+  sessionStorage.setItem('picklejar.oauth.state', 'st')
+  history.replaceState(null, '', `/${hash('st')}`)
 }
+const tokenHash = (state: string) =>
+  `#access_token=${FAKE_TOKEN}&expires_in=3599&state=${state}&scope=${encodeURIComponent('https://www.googleapis.com/auth/drive.file openid email')}`
 
-beforeEach(() => vi.stubGlobal('navigator', { ...navigator, languages: ['ko-KR'] }))
+let went: string[] = []
+beforeEach(() => {
+  vi.stubGlobal('navigator', { ...navigator, languages: ['ko-KR'], clipboard: { writeText: vi.fn(async () => {}) } })
+  went = []
+  vi.spyOn(nav, 'go').mockImplementation((url) => void went.push(url))
+})
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   vi.useRealTimers()
+  sessionStorage.clear()
   history.replaceState(null, '', '/')
 })
 
-describe('connect', () => {
-  it('shows the connect screen and opens the timeline after a valid URL and key', async () => {
+describe('sign-in and setup', () => {
+  it('shows the Google sign-in screen and starts the redirect', async () => {
     localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
-    const { fetchMock } = fakeSheet([{ Task: '회식 장소 예약', Status: 'done', Reply: '예약했어요' }])
+    const { fetchMock } = fakeSheet()
     render(<App />)
-    expect(await screen.findByText('구글 시트 연결하기')).toBeInTheDocument()
+    await userEvent.click(await screen.findByTestId('login-google'))
+    expect(went).toHaveLength(1)
+    const u = new URL(went[0])
+    expect(u.hostname).toBe('accounts.google.com')
+    expect(u.searchParams.get('state')).toBe(sessionStorage.getItem('picklejar.oauth.state'))
     expect(fetchMock).not.toHaveBeenCalled()
-    await connectByForm()
-    expect(await screen.findByText('회식 장소 예약')).toBeInTheDocument()
-    expect(screen.getByText('예약했어요')).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem(CONN_KEY)!)).toEqual({ url: FAKE_URL, key: FAKE_SHEET_KEY })
   })
 
-  it('keeps the connection after a reload', async () => {
+  it('after returning from Google with no sheet yet, creates one and shows the Pickle message', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
+    const { state } = fakeSheet()
+    returnFromGoogle(tokenHash)
+    render(<App />)
+    await userEvent.click(await screen.findByTestId('create-sheet'))
+    expect(state.created).toHaveLength(1)
+    const prompt = (await screen.findByTestId('pickle-prompt')) as HTMLTextAreaElement
+    expect(prompt.value).toContain('https://docs.google.com/spreadsheets/d/new-sheet/edit')
+    expect(window.location.hash).toBe('')
+    await userEvent.click(screen.getByTestId('copy-prompt'))
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('5분마다 Tasks 탭을 확인해서'))
+    expect(screen.getByText('복사했어요. 피클에게 붙여 넣으세요.')).toBeInTheDocument()
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '완료' }))
+    expect(await screen.findByText('아직 작업이 없어요')).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('picklejar.token.v1')!)).toMatchObject({ accessToken: FAKE_TOKEN, email: FAKE_EMAIL })
+  })
+
+  it('reuses the sheet it made before on a new device', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
+    const { state } = fakeSheet([{ Task: '예전 작업' }])
+    state.files = [FAKE_SHEET_ID]
+    storeFakeSession({ workbook: false })
+    render(<App />)
+    expect(await screen.findByText('예전 작업')).toBeInTheDocument()
+    expect(state.created).toHaveLength(0)
+  })
+
+  it('keeps the session after a reload', async () => {
     connected()
     fakeSheet([{ Task: 'A' }])
     render(<App />)
     expect(await screen.findByText('A')).toBeInTheDocument()
-    expect(screen.queryByTestId('connect-submit')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('login-google')).not.toBeInTheDocument()
   })
 
-  it('connects from the sheet menu link and removes the key from the address bar', async () => {
+  it('refreshes an expired token silently, then gives up and asks to sign in', async () => {
     localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
-    fakeSheet([{ Task: 'A' }])
-    history.replaceState(null, '', `/#connect?u=${encodeURIComponent(FAKE_URL)}&k=${FAKE_SHEET_KEY}`)
+    fakeSheet()
+    storeFakeSession({ expired: true })
+    const { unmount } = render(<App />)
+    await waitFor(() => expect(went).toHaveLength(1))
+    const u = new URL(went[0])
+    expect(u.searchParams.get('prompt')).toBe('none')
+    expect(u.searchParams.get('login_hint')).toBe(FAKE_EMAIL)
+    unmount()
+    // 구글이 조용한 로그인을 거절하고 돌아왔다
+    returnFromGoogle((st) => `#error=interaction_required&state=${st}`)
     render(<App />)
-    expect(await screen.findByText('A')).toBeInTheDocument()
-    expect(window.location.hash).toBe('')
-    expect(localStorage.getItem(CONN_KEY)).toContain(FAKE_SHEET_KEY)
+    expect(await screen.findByRole('alert')).toHaveTextContent('로그아웃됐어요')
+    expect(went).toHaveLength(1)
   })
 
-  it('splits a pasted connect link into URL and key', async () => {
+  it('ignores a token whose state does not match', async () => {
     localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
-    fakeSheet([{ Task: 'A' }])
+    fakeSheet()
+    sessionStorage.setItem('picklejar.oauth.state', 'mine')
+    history.replaceState(null, '', `/${tokenHash('forged')}`)
     render(<App />)
-    const link = `https://example.github.io/pickle-jar/#connect?u=${encodeURIComponent(FAKE_URL)}&k=${FAKE_SHEET_KEY}`
-    fireEvent.change(await screen.findByTestId('connect-url'), { target: { value: link } })
-    expect(screen.getByTestId('connect-url')).toHaveValue(FAKE_URL)
-    expect(screen.getByTestId('connect-key')).toHaveValue(FAKE_SHEET_KEY)
-    await userEvent.click(screen.getByTestId('connect-submit'))
-    expect(await screen.findByText('A')).toBeInTheDocument()
+    expect(await screen.findByTestId('login-google')).toBeInTheDocument()
+    expect(localStorage.getItem('picklejar.token.v1')).toBeNull()
   })
 
-  it('rejects a URL that is not an Apps Script web app without calling it', async () => {
+  it('explains a denied Google permission', async () => {
     localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
-    const { fetchMock } = fakeSheet()
+    fakeSheet()
+    returnFromGoogle((st) => `#error=access_denied&state=${st}`)
     render(<App />)
-    await connectByForm('https://docs.google.com/spreadsheets/d/abc/edit')
-    expect(await screen.findByRole('alert')).toHaveTextContent('웹 앱 주소 형식이 아니에요')
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it('explains a wrong key and a web app that is not open to anyone', async () => {
-    localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
-    const { state } = fakeSheet()
-    render(<App />)
-    await connectByForm(FAKE_URL, 'wrong')
-    expect(await screen.findByRole('alert')).toHaveTextContent('시트가 이 키를 거부했어요')
-    state.html = true
-    await userEvent.click(screen.getByTestId('connect-submit'))
-    expect(await screen.findByRole('alert')).toHaveTextContent('모든 사용자')
-    expect(localStorage.getItem(CONN_KEY)).toBeNull()
+    expect(await screen.findByRole('alert')).toHaveTextContent('구글 권한을 허용하지 않았어요')
   })
 })
 
@@ -174,21 +203,31 @@ describe('polling', () => {
     expect(screen.getByTestId('status-badge')).toHaveAttribute('data-status', 'done')
   })
 
-  it('shows a banner, disables input and stops polling when the sheet rejects the key', async () => {
+  it('refreshes the token silently, and stops polling, when Google rejects it', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     connected()
     const { fetchMock, state } = fakeSheet()
     state.reject = true
     render(<App />)
-    expect(await screen.findByText(/시트가 연결 키를 거부했어요/)).toBeInTheDocument()
+    expect(await screen.findByText(/구글 로그인이 만료됐어요/)).toBeInTheDocument()
+    await waitFor(() => expect(went).toHaveLength(1))
+    expect(new URL(went[0]).searchParams.get('prompt')).toBe('none')
     expect(screen.getByRole('textbox', { name: '피클에게 맡길 일을 적어 주세요' })).toBeDisabled()
     const calls = fetchMock.mock.calls.length
     await act(async () => {
       await vi.advanceTimersByTimeAsync(20_000)
     })
     expect(fetchMock.mock.calls.length).toBe(calls)
-    await userEvent.click(screen.getByRole('button', { name: '다시 연결' }))
-    expect(screen.getByTestId('connect-url')).toHaveValue(FAKE_URL)
+  })
+
+  it('offers to set up again when the sheet was deleted', async () => {
+    connected()
+    const { state } = fakeSheet([{ Task: 'A' }])
+    state.missing = true
+    render(<App />)
+    expect(await screen.findByText(/작업함 시트가 지워졌거나/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '다시 설정' }))
+    expect(await screen.findByTestId('create-sheet')).toBeInTheDocument()
   })
 
   it('shows a retry banner while offline and recovers', async () => {
@@ -322,16 +361,27 @@ describe('settings', () => {
     expect(JSON.parse(localStorage.getItem(KEY)!).pollSeconds).not.toBe(30)
   })
 
-  it('shows the connected sheet and disconnects', async () => {
+  it('opens the Pickle message from settings', async () => {
     connected()
     fakeSheet([{ Task: 'A' }])
     render(<App />)
     await screen.findByText('A')
     await userEvent.click(screen.getByTestId('open-settings'))
-    expect(screen.getByTestId('account')).toHaveTextContent(FAKE_URL)
-    await userEvent.click(screen.getByRole('button', { name: '연결 끊기' }))
-    expect(await screen.findByTestId('connect-submit')).toBeInTheDocument()
-    expect(localStorage.getItem(CONN_KEY)).toBeNull()
+    await userEvent.click(screen.getByTestId('open-pickle'))
+    expect((screen.getByTestId('pickle-prompt') as HTMLTextAreaElement).value).toContain(`/d/${FAKE_SHEET_ID}/edit`)
+  })
+
+  it('shows the signed-in account and signs out', async () => {
+    connected()
+    fakeSheet([{ Task: 'A' }])
+    render(<App />)
+    await screen.findByText('A')
+    await userEvent.click(screen.getByTestId('open-settings'))
+    expect(screen.getByTestId('account')).toHaveTextContent(FAKE_EMAIL)
+    await userEvent.click(screen.getByRole('button', { name: '로그아웃' }))
+    expect(await screen.findByTestId('login-google')).toBeInTheDocument()
+    expect(localStorage.getItem('picklejar.token.v1')).toBeNull()
+    expect(localStorage.getItem('picklejar.workbook.v1')).toBeNull()
   })
 })
 
@@ -422,17 +472,20 @@ describe('scrolling', () => {
     expect(layout.pos.y).toBe(2000)
   })
 
-  it('jumps to the latest again after reconnecting', async () => {
+  it('jumps to the latest again after switching to a new sheet', async () => {
     connected()
-    fakeSheet(Array.from({ length: 6 }, (_, i) => ({ Task: `job ${i}` })))
+    const { state } = fakeSheet(Array.from({ length: 6 }, (_, i) => ({ Task: `job ${i}` })))
     const layout = fakeLayout()
     render(<App />)
     await screen.findByText('job 5')
     await layout.atLatest()
     act(() => layout.userScroll(0))
-    await userEvent.click(screen.getByTestId('open-settings'))
-    await userEvent.click(screen.getByRole('button', { name: '연결 끊기' }))
-    await connectByForm()
+    state.missing = true
+    act(() => void document.dispatchEvent(new Event('visibilitychange'))) // 다시 보이면 바로 새로고침
+    await userEvent.click(await screen.findByRole('button', { name: '다시 설정' }))
+    state.missing = false
+    await userEvent.click(await screen.findByTestId('create-sheet'))
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '완료' }))
     await screen.findByText('job 5')
     await waitFor(() => expect(layout.pos.y).toBe(layout.height() - 800))
   })
