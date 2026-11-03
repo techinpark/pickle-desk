@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import readme from '../../README.md?raw'
+import readmeEn from '../../README.en.md?raw'
 import { FAKE_CONN, FAKE_TOKEN, fakeSheet } from '../test/fakeSheet'
 import { backfillLine, pickleInstruction } from './pickle'
 import {
@@ -183,5 +184,12 @@ describe('pickle instruction', () => {
     expect(withBackfill[8]).toBe(backfillLine(30))
     expect(withBackfill[8]).toContain('최근 30일')
     expect(readme).toContain(backfillLine(7))
+  })
+
+  it('has an English version that matches README.en.md', () => {
+    const text = pickleInstruction('u', 7, 'en').split('\n')
+    expect(text[0]).toBe('This Google Sheet is my task inbox: u')
+    for (const line of text.slice(1)) expect(readmeEn).toContain(line)
+    expect(text.join('\n')).not.toMatch(/[가-힣]/)
   })
 })

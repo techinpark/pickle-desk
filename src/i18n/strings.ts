@@ -86,7 +86,7 @@ const en = {
   'setup.failed': 'Couldn’t create the sheet. Try again.',
   'setup.sheetTitle': 'Pickle Desk Tasks',
   'pickle.title': 'Connect Pickle',
-  'pickle.step1': 'In the Pickle app, check that your Google account is connected. If not, tell Pickle “구글 연동해 줘”.',
+  'pickle.step1': 'In the Pickle app, check that your Google account is connected. If not, tell Pickle “Connect my Google account”.',
   'pickle.step2': 'Copy the message below and send it to Pickle. It will check the sheet every 5 minutes.',
   'pickle.copy': 'Copy message',
   'pickle.copied': 'Copied. Paste it to Pickle.',

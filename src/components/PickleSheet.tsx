@@ -12,12 +12,12 @@ interface Props {
 
 /** 피클에게 보낼 지시문(시트 링크 포함)을 보여 주고 복사하게 한다. */
 export function PickleSheet({ sheetUrl, onClose }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [copied, setCopied] = useState(false)
   const [backfill, setBackfill] = useState<BackfillDays>(0)
   const panel = useRef<HTMLDivElement>(null)
   const area = useRef<HTMLTextAreaElement>(null)
-  const text = pickleInstruction(sheetUrl, backfill)
+  const text = pickleInstruction(sheetUrl, backfill, locale)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
