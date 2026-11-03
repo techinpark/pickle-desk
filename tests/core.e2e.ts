@@ -77,15 +77,20 @@ describe('pickle jar', () => {
     await browser.route('https://openidconnect.googleapis.com/**', g.api)
   })
 
-  test('처음 사용: 구글 로그인 → 작업함 만들기 → 피클 문장 → 작업 보내기 → 피클 답 반영', async ({ app, screen, browser }) => {
+  test('처음 사용: 구글 로그인 → 온보딩(작업함·피클 연동·문장) → 작업 보내기 → 피클 답 반영', async ({ app, screen, browser }) => {
     g.db.length = 0
     await browser.addInitScript(KO)
     await app.open('/')
     await screen.getByTestId('login-google').tap()
     await screen.getByTestId('create-sheet').tap()
-    await expect(screen.getByText('피클 연결하기')).toBeVisible()
+    // 온보딩: 구글 연동 확인 → 문장 → 연결 테스트(건너뜀) → 시작
+    await expect(screen.getByText('피클에 구글 계정이 연결돼 있나요?')).toBeVisible()
+    await screen.getByTestId('google-yes').tap()
     await expect(screen.getByTestId('pickle-prompt')).toBeVisible()
-    await screen.getByRole('button', '완료').tap()
+    await screen.getByTestId('prompt-sent').tap()
+    await screen.getByTestId('test-skip').tap()
+    await expect(screen.getByText('거의 다 됐어요')).toBeVisible()
+    await screen.getByTestId('onb-start').tap()
     await expect(screen.getByText('아직 작업이 없어요')).toBeVisible()
 
     const box = screen.getByRole('textbox', '피클에게 맡길 일을 적어 주세요')

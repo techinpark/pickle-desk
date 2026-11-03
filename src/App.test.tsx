@@ -53,22 +53,65 @@ describe('sign-in and setup', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('after returning from Google with no sheet yet, creates one and shows the Pickle message', async () => {
+  it('walks a new user through onboarding: sheet → Google check → Pickle message → test → extras', async () => {
     localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
-    const { state } = fakeSheet()
+    const { state, db } = fakeSheet()
     returnFromGoogle(tokenHash)
     render(<App />)
+
+    // 1. 작업함 만들기
     await userEvent.click(await screen.findByTestId('create-sheet'))
     expect(state.created).toHaveLength(1)
+    expect(window.location.hash).toBe('')
+    expect(JSON.parse(localStorage.getItem('pickledesk.token.v1')!)).toMatchObject({ accessToken: FAKE_TOKEN, email: FAKE_EMAIL })
+
+    // 2. 피클 구글 연동: 모르면 할 말을 알려 준다
+    expect(await screen.findByText('피클에 구글 계정이 연결돼 있나요?')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('google-no'))
+    await userEvent.click(screen.getByTestId('google-phrase'))
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('구글 연동해 줘')
+    await userEvent.click(screen.getByRole('button', { name: '연결했어요' }))
+
+    // 3. 문장 복사
     const prompt = (await screen.findByTestId('pickle-prompt')) as HTMLTextAreaElement
     expect(prompt.value).toContain('https://docs.google.com/spreadsheets/d/new-sheet/edit')
-    expect(window.location.hash).toBe('')
     await userEvent.click(screen.getByTestId('copy-prompt'))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('5분마다 Tasks 탭을 확인해서'))
-    expect(screen.getByText('복사했어요. 피클에게 붙여 넣으세요.')).toBeInTheDocument()
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '완료' }))
+    await userEvent.click(screen.getByRole('button', { name: '보냈어요' }))
+
+    // 4. 테스트 작업 → 피클이 답하면 성공 화면
+    await userEvent.click(await screen.findByTestId('send-test'))
+    await waitFor(() => expect(db).toHaveLength(1))
+    expect(db[0]).toMatchObject({ Category: 'quick_action', Status: 'pending' })
+    expect(await screen.findByTestId('test-waiting')).toBeInTheDocument()
+    db[0].Status = 'done'
+    db[0].Reply = '연결됐어요!'
+    act(() => void document.dispatchEvent(new Event('visibilitychange')))
+    expect(await screen.findByText('피클과 연결됐어요! 🎉')).toBeInTheDocument()
+    expect(screen.getByText('연결됐어요!')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('test-next'))
+
+    // 5. 마무리 → 메인
+    expect(await screen.findByText('거의 다 됐어요')).toBeInTheDocument()
+    await userEvent.click(screen.getByTestId('onb-start'))
+    expect(await screen.findByText('연결됐어요!')).toBeInTheDocument()
+    expect(screen.queryByTestId('onboarding')).not.toBeInTheDocument()
+    expect(localStorage.getItem('pickledesk.onboarding.v1')).toBeNull()
+  })
+
+  it('resumes onboarding after a reload and can be skipped with "later"', async () => {
+    localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
+    fakeSheet()
+    returnFromGoogle(tokenHash)
+    const { unmount } = render(<App />)
+    await userEvent.click(await screen.findByTestId('create-sheet'))
+    await userEvent.click(await screen.findByTestId('google-yes'))
+    await screen.findByTestId('pickle-prompt')
+    unmount()
+    render(<App />)
+    expect(await screen.findByTestId('pickle-prompt')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('나중에'))
     expect(await screen.findByText('아직 작업이 없어요')).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem('pickledesk.token.v1')!)).toMatchObject({ accessToken: FAKE_TOKEN, email: FAKE_EMAIL })
   })
 
   it('signs in on the first try even when the startup effect runs twice (StrictMode)', async () => {
@@ -90,14 +133,14 @@ describe('sign-in and setup', () => {
     returnFromGoogle(tokenHash)
     render(<App />)
     await userEvent.click(await screen.findByTestId('create-sheet'))
-    const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText('지난 기록도 가져올까요?')).toBeInTheDocument()
-    const prompt = within(dialog).getByTestId('pickle-prompt') as HTMLTextAreaElement
-    expect(within(dialog).getByRole('radio', { name: '안 가져오기' })).toHaveAttribute('aria-checked', 'true')
+    await userEvent.click(await screen.findByTestId('google-yes'))
+    expect(await screen.findByText('지난 기록도 가져올까요?')).toBeInTheDocument()
+    const prompt = screen.getByTestId('pickle-prompt') as HTMLTextAreaElement
+    expect(screen.getByRole('radio', { name: '안 가져오기' })).toHaveAttribute('aria-checked', 'true')
     expect(prompt.value).not.toContain('처음 한 번만')
-    await userEvent.click(within(dialog).getByRole('radio', { name: '최근 7일' }))
+    await userEvent.click(screen.getByRole('radio', { name: '최근 7일' }))
     expect(prompt.value).toContain('7. 처음 한 번만: 최근 7일 동안')
-    await userEvent.click(within(dialog).getByTestId('copy-prompt'))
+    await userEvent.click(screen.getByTestId('copy-prompt'))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('최근 7일 동안'))
   })
 
@@ -620,7 +663,7 @@ describe('scrolling', () => {
     await userEvent.click(await screen.findByRole('button', { name: '다시 설정' }))
     state.missing = false
     await userEvent.click(await screen.findByTestId('create-sheet'))
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '완료' }))
+    await userEvent.click(await screen.findByText('나중에'))
     await screen.findByText('job 5')
     await waitFor(() => expect(layout.pos.y).toBe(layout.height() - 800))
   })

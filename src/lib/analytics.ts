@@ -44,11 +44,13 @@ const standalone = () =>
   window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
 
 export type AppEvent =
-  | { name: 'page_view'; page_title: 'sign_in' | 'setup' | 'main' }
+  | { name: 'page_view'; page_title: 'sign_in' | 'setup' | 'onboarding' | 'main' }
   | { name: 'login' }
   | { name: 'sheet_create' }
   | { name: 'task_send'; category: string; source: string }
   | { name: 'prompt_copy'; backfill_days: number }
+  | { name: 'onboarding_step'; step: string }
+  | { name: 'onboarding_done'; skipped: boolean }
 
 /** 앱 이벤트를 남긴다. 구글 로그인에서 돌아온 직후 주소창의 토큰이 지워진 뒤에만 부른다. */
 export function track(e: AppEvent) {

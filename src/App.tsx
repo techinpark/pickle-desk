@@ -5,7 +5,7 @@ import { Icon } from './components/Icon'
 import { MenuSheet } from './components/MenuSheet'
 import { PickleSheet } from './components/PickleSheet'
 import { SettingsSheet } from './components/SettingsSheet'
-import { SetupScreen } from './components/SetupScreen'
+import { Onboarding } from './components/Onboarding'
 import { SignInScreen } from './components/SignInScreen'
 import { Timeline } from './components/Timeline'
 import { I18nProvider } from './i18n/i18n'
@@ -13,6 +13,7 @@ import { translator } from './i18n/translate'
 import { track } from './lib/analytics'
 import { NOTIFY_BATCH, showSummaryNotification, showTaskNotification, worthNotifying } from './lib/notify'
 import { loadSettings, resolveLocale, saveSettings, type Settings } from './lib/settings'
+import { loadOnboarding, saveOnboarding, type Onboarding as OnboardingState, type Step } from './lib/onboarding'
 import { STATUSES, type Category, type Status, type Task, type TaskSource } from './lib/types'
 import { useSession } from './lib/useSession'
 import { changedIds, useTasks } from './lib/useTasks'
@@ -56,6 +57,10 @@ export default function App() {
   const [sheet, setSheet] = useState(false)
   const [pickle, setPickle] = useState(false)
   const [menu, setMenu] = useState(false)
+  // 처음 설정(온보딩). 새로 만든 작업함에만 한다.
+  const [onb, setOnb] = useState<OnboardingState | null>(() => loadOnboarding())
+  useEffect(() => saveOnboarding(onb), [onb])
+  const inOnboarding = session.phase === 'ready' && onb?.sheetId === session.workbook.spreadsheetId
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null)
   const [freshIds, setFreshIds] = useState<Set<number>>(new Set())
   const [showJump, setShowJump] = useState(false)
@@ -69,7 +74,9 @@ export default function App() {
   // 피클이 상태·답변을 바꾼 카드를 잠깐 강조한다.
   const prevRef = useRef<Map<number, Task>>(new Map())
   const notifyOn = useRef(settings.notify)
-  notifyOn.current = settings.notify
+  useEffect(() => {
+    notifyOn.current = settings.notify
+  }, [settings.notify])
   useEffect(() => {
     const prev = prevRef.current
     const ids = changedIds(prev, tasks.tasks)
@@ -91,11 +98,12 @@ export default function App() {
   const atBottom = useRef(true)
   const scrolledOnce = useRef(false)
   const olderAnchor = useRef<number | null>(null) // 이전 작업을 불러올 때 아래에서부터 떨어진 거리
+  // 새 연결이거나 온보딩을 마치고 타임라인이 처음 보일 때 최신으로 내려간다.
   useEffect(() => {
     scrolledOnce.current = false
     atBottom.current = true
     olderAnchor.current = null
-  }, [conn])
+  }, [conn, inOnboarding])
 
   useEffect(() => {
     const onScroll = () => {
@@ -108,7 +116,7 @@ export default function App() {
   }, [])
 
   useLayoutEffect(() => {
-    if (tasks.tasks.length === 0) return
+    if (tasks.tasks.length === 0 || inOnboarding) return
     const root = document.documentElement
     if (olderAnchor.current !== null) {
       if (tasks.loadingMore) return
@@ -123,18 +131,26 @@ export default function App() {
       scrolledOnce.current = true
       window.scrollTo({ top: root.scrollHeight })
     }
-  }, [tasks.tasks, tasks.loadingMore])
+  }, [tasks.tasks, tasks.loadingMore, inOnboarding])
 
   const loadOlder = () => {
     olderAnchor.current = document.documentElement.scrollHeight - window.scrollY
     void tasks.loadMore()
   }
 
-  const phase = session.phase
+  const screenName =
+    session.phase === 'loading'
+      ? null
+      : session.phase === 'signedOut'
+        ? 'sign_in'
+        : session.phase === 'noWorkbook'
+          ? 'setup'
+          : inOnboarding
+            ? 'onboarding'
+            : 'main'
   useEffect(() => {
-    if (phase === 'loading') return
-    track({ name: 'page_view', page_title: phase === 'signedOut' ? 'sign_in' : phase === 'noWorkbook' ? 'setup' : 'main' })
-  }, [phase])
+    if (screenName) track({ name: 'page_view', page_title: screenName })
+  }, [screenName])
 
   const counts = useMemo(() => {
     const c = Object.fromEntries(STATUSES.map((s) => [s, 0])) as Record<Status, number>
@@ -171,10 +187,40 @@ export default function App() {
   }
 
   const createSheet = async (title: string) => {
-    await create(title)
-    // 만들자마자 피클에게 보낼 문장을 보여 준다.
-    setPickle(true)
+    const w = await create(title)
+    if (w) setOnb({ sheetId: w.spreadsheetId, step: 'google' })
   }
+
+  const sendTest = async (text: string) => {
+    try {
+      const id = await tasks.create(text, 'quick_action')
+      track({ name: 'task_send', category: 'quick_action', source: 'onboarding' })
+      setOnb((o) => (o ? { ...o, testId: id } : o))
+      return id
+    } catch {
+      return null
+    }
+  }
+
+  const finishOnboarding = (skipped: boolean) => {
+    track({ name: 'onboarding_done', skipped })
+    setOnb(null)
+  }
+
+  const onboardingProps = {
+    email: session.phase === 'noWorkbook' || session.phase === 'ready' ? session.email : null,
+    busy,
+    tasks: tasks.tasks,
+    testId: onb?.testId,
+    settings,
+    onCreate: createSheet,
+    onStep: (step: Step) => setOnb((o) => (o ? { ...o, step } : o)),
+    onSendTest: sendTest,
+    onSettings: update,
+    onFinish: finishOnboarding,
+    onSignOut: signOut,
+  }
+  const onboarding = inOnboarding ? onb : null
 
   return (
     <I18nProvider locale={locale}>
@@ -183,7 +229,9 @@ export default function App() {
       ) : session.phase === 'signedOut' ? (
         <SignInScreen error={session.error} onSignIn={signIn} />
       ) : session.phase === 'noWorkbook' ? (
-        <SetupScreen email={session.email} busy={busy} onCreate={createSheet} onSignOut={signOut} />
+        <Onboarding step="create" sheetUrl={null} {...onboardingProps} />
+      ) : onboarding ? (
+        <Onboarding step={onboarding.step} sheetUrl={session.workbook.url} {...onboardingProps} />
       ) : (
         <div className="app">
           <Header
