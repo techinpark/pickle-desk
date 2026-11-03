@@ -2,7 +2,7 @@ import { Fragment, useMemo } from 'react'
 import { useI18n } from '../i18n/i18n'
 import { dayKey, dayLabel } from '../lib/format'
 import type { Task } from '../lib/types'
-import { Icon } from './Icon'
+import { PickleMark } from './PickleMark'
 import { TaskItem } from './TaskItem'
 
 interface Props {
@@ -48,7 +48,7 @@ export function Timeline({ tasks, freshIds, loading, filtered, hasMore, loadingM
     return (
       <div className="empty">
         <div className="empty-icon">
-          <Icon name="tower" size={28} />
+          <PickleMark size={44} />
         </div>
         <p className="empty-title">{t(filtered ? 'timeline.filteredEmpty' : 'timeline.empty.title')}</p>
         {!filtered && <p className="empty-body">{t('timeline.empty.body')}</p>}

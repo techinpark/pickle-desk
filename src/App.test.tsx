@@ -303,6 +303,7 @@ describe('composer', () => {
     const { db } = fakeSheet([])
     render(<App />)
     await screen.findByText('아직 작업이 없어요')
+    await userEvent.click(screen.getByTestId('pick-category'))
     await userEvent.click(screen.getByRole('radio', { name: '아이디어' }))
     await userEvent.type(screen.getByRole('textbox', { name: '피클에게 맡길 일을 적어 주세요' }), '새 앱 아이디어{Enter}')
     await waitFor(() => expect(db[0]?.Category).toBe('idea'))

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useI18n } from '../i18n/i18n'
-import { Icon } from './Icon'
+import { PickleMark } from './PickleMark'
 
 interface Props {
   email: string | null
@@ -24,7 +24,7 @@ export function SetupScreen({ email, busy, onCreate, onSignOut }: Props) {
     <main className="connect">
       <div className="connect-card">
         <div className="connect-icon" aria-hidden="true">
-          <Icon name="tower" size={26} />
+          <PickleMark size={44} />
         </div>
         <h1>{t('setup.title')}</h1>
         <p className="connect-body">{t('setup.body')}</p>

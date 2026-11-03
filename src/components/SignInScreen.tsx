@@ -1,7 +1,7 @@
 import { useI18n } from '../i18n/i18n'
 import { CLIENT_ID } from '../lib/google'
 import type { SessionError } from '../lib/useSession'
-import { Icon } from './Icon'
+import { PickleMark } from './PickleMark'
 
 interface Props {
   error?: SessionError
@@ -14,7 +14,7 @@ export function SignInScreen({ error, onSignIn }: Props) {
     <main className="connect">
       <div className="connect-card">
         <div className="connect-icon" aria-hidden="true">
-          <Icon name="tower" size={26} />
+          <PickleMark size={44} />
         </div>
         <h1>{t('login.title')}</h1>
         <p className="connect-body">{t('login.body')}</p>

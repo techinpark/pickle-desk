@@ -1,0 +1,18 @@
+// 앱 마크: 유리병 속 피클. public/favicon.svg 와 같은 그림이다.
+export function PickleMark({ size = 32 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="21" y="5" width="22" height="9" rx="3" fill="#2E9E4F" />
+      <rect x="18" y="12" width="28" height="5" rx="2.5" fill="#23803E" />
+      <path d="M16 23a5 5 0 0 1 5-5h22a5 5 0 0 1 5 5v26a9 9 0 0 1-9 9H25a9 9 0 0 1-9-9z" fill="#E9F7EC" stroke="#2E9E4F" strokeWidth="3" />
+      <g transform="rotate(-16 33 38)">
+        <rect x="27" y="23" width="13" height="30" rx="6.5" fill="#62BF4E" />
+        <circle cx="31" cy="30" r="1.4" fill="#3E9637" />
+        <circle cx="36" cy="35" r="1.4" fill="#3E9637" />
+        <circle cx="31" cy="41" r="1.4" fill="#3E9637" />
+        <circle cx="36" cy="46" r="1.4" fill="#3E9637" />
+      </g>
+      <path d="M21.5 26v16" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+    </svg>
+  )
+}

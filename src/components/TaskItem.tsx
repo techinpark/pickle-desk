@@ -40,11 +40,8 @@ export function TaskItem({ task, fresh }: { task: Task; fresh: boolean }) {
       </div>
 
       <div className="agent-row">
-        <div className="avatar" aria-hidden="true">
-          <Icon name="tower" size={18} />
-        </div>
         <div className="agent-col">
-          <span className="agent-name">{t('timeline.agent')}</span>
+          <span className="sr-only">{t('timeline.agent')}</span>
           {hasReply ? (
             <div className={`bubble${task.status === 'failed' ? ' bubble-failed' : ''}`}>
               <RichText text={task.reply} />

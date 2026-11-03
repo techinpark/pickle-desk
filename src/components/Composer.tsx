@@ -15,6 +15,7 @@ export function Composer({ disabled, onSubmit }: Props) {
   const [text, setText] = useState('')
   const [category, setCategory] = useState<Category>('task')
   const [sending, setSending] = useState(false)
+  const [picking, setPicking] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
 
   // 입력 길이에 맞춰 높이를 늘린다(최대 6줄 정도).
@@ -67,21 +68,38 @@ export function Composer({ disabled, onSubmit }: Props) {
             void send(text, category, 'composer')
           }}
         >
-          <div className="cat-row" role="radiogroup" aria-label={t('a11y.category')}>
-            {CATEGORIES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                role="radio"
-                aria-checked={category === c}
-                className={`cat${category === c ? ' cat-on' : ''}`}
-                onClick={() => setCategory(c)}
-              >
-                {t(`category.${c}`)}
-              </button>
-            ))}
-          </div>
+          {picking && (
+            <div className="cat-row" role="radiogroup" aria-label={t('a11y.category')}>
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={category === c}
+                  className={`cat${category === c ? ' cat-on' : ''}`}
+                  onClick={() => {
+                    setCategory(c)
+                    setPicking(false)
+                    ref.current?.focus()
+                  }}
+                >
+                  {t(`category.${c}`)}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="input-row">
+            <button
+              type="button"
+              className={`plus${picking ? ' plus-on' : ''}`}
+              aria-label={t('a11y.category')}
+              aria-expanded={picking}
+              onClick={() => setPicking((v) => !v)}
+              data-testid="pick-category"
+            >
+              <Icon name="plus" size={20} />
+            </button>
+            {category !== 'task' && <span className="cat-picked">{t(`category.${category}`)}</span>}
             <textarea
               ref={ref}
               rows={1}
@@ -102,8 +120,8 @@ export function Composer({ disabled, onSubmit }: Props) {
               <Icon name="send" size={20} />
             </button>
           </div>
-          <p className="hint">{t('composer.hint')}</p>
         </form>
+        <p className="hint">{t('composer.hint')}</p>
       </div>
     </div>
   )
