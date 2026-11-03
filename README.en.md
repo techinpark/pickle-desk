@@ -100,6 +100,9 @@ Turn on Settings → **Reply notifications** to get a phone or desktop notificat
 **Sometimes a Google screen flashes by.**
 Since it's a browser app, the Google sign-in expires every hour. When it does, the app briefly goes through Google to get a new one. If you've already allowed access, there's nothing to tap.
 
+**I have an idea / something doesn't work.**
+Open ≡ menu → **Request an update** for a request form you can send without signing in. Developers are welcome to open [GitHub issues](https://github.com/techinpark/pickle-desk/issues) too.
+
 **I deleted the sheet.**
 When the app says the task sheet was deleted, tap **Set up again** to create a new one and send Pickle the new message.
 

@@ -12,7 +12,7 @@ interface Props {
 
 /** ≡ 버튼 메뉴: 설정, 피클 문장, 시트 열기, 개발자에게 업데이트 요청. */
 export function MenuSheet({ sheetUrl, onSettings, onPickle, onClose }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const panel = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function MenuSheet({ sheetUrl, onSettings, onPickle, onClose }: Props) {
           <a className="menu-item" href={sheetUrl} target="_blank" rel="noreferrer" onClick={onClose}>
             {item('sheet', t('pickle.openSheet'))}
           </a>
-          <a className="menu-item" href={requestUrl()} target="_blank" rel="noreferrer" onClick={onClose} data-testid="request-update">
+          <a className="menu-item" href={requestUrl(locale)} target="_blank" rel="noreferrer" onClick={onClose} data-testid="request-update">
             {item('chat', t('menu.request'), t('menu.requestHelp'))}
           </a>
         </nav>

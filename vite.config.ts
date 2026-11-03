@@ -6,6 +6,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 // GitHub Pages 처럼 하위 경로에 올릴 때 BASE_PATH=/pickle-desk/ 로 빌드한다.
 const base = process.env.BASE_PATH ?? '/'
 
+// 링크 미리보기(og:url·og:image)는 절대 주소여야 한다. GitHub Actions 에서는 레포 이름으로, 아니면 공식 주소로.
+const repo = process.env.GITHUB_REPOSITORY?.split('/')
+process.env.VITE_SITE_URL ??= repo ? `https://${repo[0]}.github.io/${repo[1]}/` : 'https://techinpark.github.io/pickle-desk/'
+
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'dev') },
   base,
@@ -22,8 +26,8 @@ export default defineConfig({
         start_url: base,
         scope: base,
         display: 'standalone',
-        background_color: '#f2f4f6',
-        theme_color: '#f2f4f6',
+        background_color: '#ffffff',
+        theme_color: '#ffffff',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
