@@ -46,6 +46,7 @@ function load(rows: unknown[][]) {
     sheet,
     get: (p: Record<string, string>) => fn.doGet({ parameter: p }).body,
     post: (b: unknown) => fn.doPost({ postData: { contents: JSON.stringify(b) } }).body,
+    instruction: (url: string) => (fn.pickleInstruction_ as unknown as (u: string) => string)(url),
   }
 }
 
@@ -101,5 +102,14 @@ describe('Code.gs web app', () => {
     expect(s.get({ action: 'drop', key: KEY })).toEqual({ ok: false, error: 'unknown_action' })
     const ctxPost = load([HEAD])
     expect(ctxPost.post('not an object')).toMatchObject({ ok: false })
+  })
+})
+
+describe('pickle instruction', () => {
+  it('includes the sheet link and matches README step 5 line for line', () => {
+    const text = load([HEAD]).instruction('https://docs.google.com/spreadsheets/d/abc/edit')
+    expect(text.split('\n')[0]).toBe('이 구글 시트가 내 작업함이야: https://docs.google.com/spreadsheets/d/abc/edit')
+    const readme = readFileSync(path.join(import.meta.dirname, '..', 'README.md'), 'utf8')
+    for (const line of text.split('\n').slice(1)) expect(readme).toContain(line)
   })
 })

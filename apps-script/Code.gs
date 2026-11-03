@@ -41,6 +41,7 @@ function onOpen() {
     .createMenu('🥒 Pickle Jar')
     .addItem('1. 시트 준비하기', 'setup')
     .addItem('2. 휴대폰 연결하기', 'showConnect')
+    .addItem('3. 피클에게 보낼 문장 복사', 'showPickleSetup')
     .addSeparator()
     .addItem('연결 키 새로 만들기', 'rotateKey')
     .addToUi()
@@ -69,7 +70,7 @@ function setup() {
   SpreadsheetApp.getUi().alert(
     '시트 준비 완료',
     '이제 오른쪽 위 [배포] → [새 배포] → 유형 "웹 앱"으로 배포하세요.\n' +
-      '· 실행 사용자: 나\n· 액세스 권한: 모든 사용자\n\n배포가 끝나면 메뉴의 "2. 휴대폰 연결하기"를 누르세요.',
+      '· 실행 사용자: 나\n· 액세스 권한: 모든 사용자\n\n배포가 끝나면 메뉴의 "2. 휴대폰 연결하기", "3. 피클에게 보낼 문장 복사"를 차례로 누르세요.',
     SpreadsheetApp.getUi().ButtonSet.OK,
   )
 }
@@ -94,6 +95,34 @@ function showConnect() {
   )
   t.link = link
   SpreadsheetApp.getUi().showModalDialog(t.evaluate().setWidth(360).setHeight(440), '휴대폰 연결하기')
+}
+
+/** 피클(구글 연동 + 5분 스케줄)에게 보낼 지시문. 이 시트 링크가 들어 있다. README 5단계와 같은 내용. */
+function pickleInstruction_(sheetUrl) {
+  return [
+    '이 구글 시트가 내 작업함이야: ' + sheetUrl,
+    '5분마다 ' + SHEET_NAME + ' 탭을 확인해서 자동으로 처리해 줘.',
+    '1. Status 가 pending 인 행을 위에서부터 확인해.',
+    '2. 작업을 시작할 때 Status 를 running 으로 바꿔.',
+    '3. 끝나면 Reply 에 한두 문장 요약 답을, Result 에 자세한 결과를 적고 Status 를 done 으로 바꿔.',
+    '4. 할 수 없으면 Reply 에 이유를 적고 Status 를 failed 로 바꿔.',
+    '5. 나에게 먼저 알려 줄 알림이나 제안이 있으면 새 행을 추가해서 Task 에 제목, Reply 에 내용을 적고 Status 를 done 으로 둬.',
+    '6. Id, Task, Category, CreatedAt 칸은 고치지 마. 새 행의 Id 는 비워 두면 돼.',
+  ].join('\n')
+}
+
+function showPickleSetup() {
+  var t = HtmlService.createTemplate(
+    '<div style="font-family:system-ui,sans-serif">' +
+      '<p>피클 앱에 구글 계정이 연동되어 있는지 먼저 확인하세요(안 되어 있으면 피클에게 "구글 연동해 줘").<br>' +
+      '그다음 아래 문장을 복사해서 피클에게 보내면 5분마다 이 시트를 확인해요.</p>' +
+      '<textarea id="t" readonly style="width:100%;height:230px;font-size:12px"><?= text ?></textarea>' +
+      '<button onclick="var t=document.getElementById(\'t\');t.select();navigator.clipboard.writeText(t.value).then(function(){document.getElementById(\'m\').textContent=\'복사했어요\'})">복사하기</button>' +
+      ' <span id="m" style="color:#1a7f37"></span>' +
+      '</div>',
+  )
+  t.text = pickleInstruction_(SpreadsheetApp.getActiveSpreadsheet().getUrl())
+  SpreadsheetApp.getUi().showModalDialog(t.evaluate().setWidth(420).setHeight(400), '피클에게 보낼 문장')
 }
 
 function rotateKey() {
