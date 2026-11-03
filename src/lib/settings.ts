@@ -5,6 +5,8 @@ export interface Settings {
   pollSeconds: number
   locale: Locale | 'auto'
   theme: ThemePref
+  /** 앱이 백그라운드에 있을 때 새 답변 알림 */
+  notify: boolean
 }
 
 export const POLL_OPTIONS = [5, 10, 15, 30] as const
@@ -14,6 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pollSeconds: 5,
   locale: 'auto',
   theme: 'system',
+  notify: false,
 }
 
 export function loadSettings(storage: Storage = localStorage): Settings {
@@ -24,6 +27,7 @@ export function loadSettings(storage: Storage = localStorage): Settings {
       pollSeconds: raw.pollSeconds ?? DEFAULT_SETTINGS.pollSeconds,
       locale: raw.locale ?? DEFAULT_SETTINGS.locale,
       theme: raw.theme ?? DEFAULT_SETTINGS.theme,
+      notify: raw.notify === true,
     }
     if (!(POLL_OPTIONS as readonly number[]).includes(s.pollSeconds)) s.pollSeconds = DEFAULT_SETTINGS.pollSeconds
     if (!['auto', 'en', 'ko'].includes(s.locale)) s.locale = 'auto'

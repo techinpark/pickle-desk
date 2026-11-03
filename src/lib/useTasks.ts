@@ -43,7 +43,10 @@ export function applyFirstPage(
   }
 }
 
-export function useTasks(conn: Connection | null, pollSeconds: number) {
+/** 알림을 켰을 때 앱이 가려져 있는 동안의 확인 주기(초). 시트 API 할당량을 아끼려고 화면에 보일 때보다 느리게. */
+export const BACKGROUND_POLL_SECONDS = 30
+
+export function useTasks(conn: Connection | null, pollSeconds: number, background = false) {
   const [s, setS] = useState<TasksState>({
     tasks: [],
     state: conn ? 'connecting' : 'idle',
@@ -99,12 +102,19 @@ export function useTasks(conn: Connection | null, pollSeconds: number) {
     if (conn) void refresh()
   }, [conn, refresh])
 
-  // 폴링: 탭이 가려져 있으면 쉬고, 다시 보이면 바로 새로고침한다. 토큰이 거부되거나 시트가 사라지면 멈춘다.
+  // 폴링: 탭이 가려져 있으면 쉬고(알림을 켰으면 느리게 계속), 다시 보이면 바로 새로고침한다.
+  // 토큰이 거부되거나 시트가 사라지면 멈춘다.
   const stopped = s.state === 'unauthorized' || s.state === 'missing' || !conn
   useEffect(() => {
     if (stopped) return
+    let last = Date.now()
     const id = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void refresh()
+      const visible = document.visibilityState === 'visible'
+      const due = Date.now() - last >= Math.max(pollSeconds, BACKGROUND_POLL_SECONDS) * 1000 - 50
+      if (visible || (background && due)) {
+        last = Date.now()
+        void refresh()
+      }
     }, pollSeconds * 1000)
     const onVisible = () => document.visibilityState === 'visible' && void refresh()
     document.addEventListener('visibilitychange', onVisible)
@@ -114,7 +124,7 @@ export function useTasks(conn: Connection | null, pollSeconds: number) {
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('online', onVisible)
     }
-  }, [stopped, pollSeconds, refresh])
+  }, [stopped, pollSeconds, background, refresh])
 
   const loadMore = useCallback(async () => {
     const c = connRef.current

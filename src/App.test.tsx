@@ -217,6 +217,66 @@ describe('polling', () => {
     expect(screen.getByTestId('status-badge')).toHaveAttribute('data-status', 'done')
   })
 
+  it('notifies about a Pickle reply while the app is hidden, but not while it is visible', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const showNotification = vi.fn(async () => {})
+    vi.stubGlobal('Notification', Object.assign(vi.fn(), { permission: 'granted', requestPermission: vi.fn() }))
+    vi.stubGlobal('navigator', { ...navigator, languages: ['ko-KR'], serviceWorker: { getRegistration: async () => ({ showNotification }) } })
+    connected({ pollSeconds: 5, notify: true })
+    const { db } = fakeSheet([{ Task: '아침 브리핑', Status: 'pending' }, { Task: '메일 요약', Status: 'pending' }])
+    render(<App />)
+    await screen.findByText('아침 브리핑')
+
+    // 보이는 동안의 답변은 알리지 않는다
+    db[1].Status = 'done'
+    db[1].Reply = '메일 3통'
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_100)
+    })
+    await screen.findByText('메일 3통')
+    expect(showNotification).not.toHaveBeenCalled()
+
+    // 가려져 있으면 30초마다 확인하고 알린다
+    const vis = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    db[0].Status = 'done'
+    db[0].Reply = '브리핑 준비했어요'
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000)
+    })
+    await waitFor(() => expect(showNotification).toHaveBeenCalledTimes(1))
+    expect(showNotification).toHaveBeenCalledWith('피클', expect.objectContaining({ body: '아침 브리핑\n브리핑 준비했어요', tag: 'task-1' }))
+    vis.mockRestore()
+  })
+
+  it('asks for notification permission when turned on in settings', async () => {
+    const requestPermission = vi.fn(async () => 'granted')
+    vi.stubGlobal('Notification', Object.assign(vi.fn(), { permission: 'default', requestPermission }))
+    vi.stubGlobal('navigator', { ...navigator, languages: ['ko-KR'], serviceWorker: {} })
+    connected()
+    fakeSheet([{ Task: 'A' }])
+    render(<App />)
+    await screen.findByText('A')
+    await userEvent.click(screen.getByTestId('open-settings'))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('radio', { name: '켜기' }))
+    expect(requestPermission).toHaveBeenCalled()
+    await waitFor(() => expect(within(screen.getByRole('dialog')).getByRole('radio', { name: '켜기' })).toHaveAttribute('aria-checked', 'true'))
+    await userEvent.click(screen.getByTestId('save-settings'))
+    expect(JSON.parse(localStorage.getItem(KEY)!).notify).toBe(true)
+  })
+
+  it('explains when notifications are blocked', async () => {
+    vi.stubGlobal('Notification', Object.assign(vi.fn(), { permission: 'denied', requestPermission: vi.fn() }))
+    vi.stubGlobal('navigator', { ...navigator, languages: ['ko-KR'], serviceWorker: {} })
+    connected()
+    fakeSheet([{ Task: 'A' }])
+    render(<App />)
+    await screen.findByText('A')
+    await userEvent.click(screen.getByTestId('open-settings'))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('radio', { name: '켜기' }))
+    expect(await screen.findByText(/알림이 차단돼 있어요/)).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByRole('radio', { name: '끄기' })).toHaveAttribute('aria-checked', 'true')
+  })
+
   it('refreshes the token silently, and stops polling, when Google rejects it', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     connected()
@@ -348,7 +408,7 @@ describe('settings', () => {
     await userEvent.click(screen.getByTestId('save-settings'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     const saved = JSON.parse(localStorage.getItem(KEY)!)
-    expect(saved).toEqual({ pollSeconds: 10, locale: 'en', theme: 'dark' })
+    expect(saved).toEqual({ pollSeconds: 10, locale: 'en', theme: 'dark', notify: false })
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
     expect(screen.getByRole('textbox', { name: 'Ask Pickle to do something' })).toBeInTheDocument()
     expect(document.documentElement.lang).toBe('en')

@@ -10,6 +10,7 @@ import { Timeline } from './components/Timeline'
 import { I18nProvider } from './i18n/i18n'
 import { translator } from './i18n/translate'
 import { track } from './lib/analytics'
+import { showTaskNotification, worthNotifying } from './lib/notify'
 import { loadSettings, resolveLocale, saveSettings, type Settings } from './lib/settings'
 import { STATUSES, type Category, type Status, type Task, type TaskSource } from './lib/types'
 import { useSession } from './lib/useSession'
@@ -43,7 +44,7 @@ export default function App() {
   }, [])
 
   const { session, conn, busy, signIn, reauth, logout, create, forgetWorkbook } = useSession()
-  const tasks = useTasks(conn, settings.pollSeconds)
+  const tasks = useTasks(conn, settings.pollSeconds, settings.notify)
 
   // 토큰이 만료되면 조용히 다시 받아 온다(이미 동의한 계정이면 구글 화면을 잠깐 거쳐 바로 돌아옴).
   useEffect(() => {
@@ -65,14 +66,23 @@ export default function App() {
 
   // 피클이 상태·답변을 바꾼 카드를 잠깐 강조한다.
   const prevRef = useRef<Map<number, Task>>(new Map())
+  const notifyOn = useRef(settings.notify)
+  notifyOn.current = settings.notify
   useEffect(() => {
-    const ids = changedIds(prevRef.current, tasks.tasks)
+    const prev = prevRef.current
+    const ids = changedIds(prev, tasks.tasks)
     prevRef.current = new Map(tasks.tasks.map((x) => [x.id, x]))
+    // 앱이 가려져 있는 동안 피클이 답하면 알린다. 처음 불러온 목록(prev 가 빈 경우)은 알리지 않는다.
+    if (notifyOn.current && prev.size > 0 && document.visibilityState !== 'visible') {
+      for (const x of tasks.tasks) {
+        if (worthNotifying(prev.get(x.id), x)) void showTaskNotification(x, t('timeline.agent'), t(`status.${x.status}`))
+      }
+    }
     if (ids.length === 0) return
     setFreshIds(new Set(ids))
     const id = window.setTimeout(() => setFreshIds(new Set()), 2400)
     return () => window.clearTimeout(id)
-  }, [tasks.tasks])
+  }, [tasks.tasks, t])
 
   // 스크롤 따라가기. 아래 근처에 있었는지는 새 내용이 그려지기 "전" 값을 써야 해서 스크롤할 때마다 기억해 둔다.
   // (그린 뒤에 재면 긴 답변이 붙는 순간 아래에서 멀어진 것으로 보여 따라가지 못한다.)

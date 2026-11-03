@@ -35,6 +35,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png}'],
         // 개인정보처리방침은 앱 셸로 바꾸지 않고 그대로 연다.
         navigateFallbackDenylist: [/privacy\.html$/],
+        // 알림을 누르면 앱 창을 연다.
+        importScripts: ['sw-notify.js'],
         runtimeCaching: [
           {
             urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.endsWith('.woff2'),

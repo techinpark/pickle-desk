@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n/i18n'
 import { listTasks, SheetError, type Connection } from '../lib/sheet'
+import { notifySupport, requestNotify } from '../lib/notify'
 import { POLL_OPTIONS, type Settings } from '../lib/settings'
 import { Icon } from './Icon'
 import { Segmented } from './Segmented'
@@ -22,6 +23,7 @@ export function SettingsSheet({ settings, conn, email, sheetUrl, onSave, onPickl
   const { t } = useI18n()
   const [draft, setDraft] = useState(settings)
   const [test, setTest] = useState<TestState>({ kind: 'idle' })
+  const [notifyNote, setNotifyNote] = useState<'denied' | 'needsInstall' | 'unsupported' | null>(null)
   const panel = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -37,6 +39,15 @@ export function SettingsSheet({ settings, conn, email, sheetUrl, onSave, onPickl
   }, [onClose])
 
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setDraft((d) => ({ ...d, [k]: v }))
+
+  const setNotify = async (on: boolean) => {
+    setNotifyNote(null)
+    if (!on) return set('notify', false)
+    const support = notifySupport()
+    if (support !== 'ok') return setNotifyNote(support)
+    if (await requestNotify()) set('notify', true)
+    else setNotifyNote('denied')
+  }
 
   const runTest = async () => {
     setTest({ kind: 'running' })
@@ -119,6 +130,25 @@ export function SettingsSheet({ settings, conn, email, sheetUrl, onSave, onPickl
               ]}
               onChange={(v) => set('theme', v)}
             />
+          </section>
+
+          <section className="group">
+            <Segmented
+              label={t('settings.notify')}
+              value={draft.notify ? 'on' : 'off'}
+              options={[
+                { value: 'off', label: t('settings.notify.off') },
+                { value: 'on', label: t('settings.notify.on') },
+              ]}
+              onChange={(v) => void setNotify(v === 'on')}
+            />
+            {notifyNote ? (
+              <p className="form-error" role="alert">
+                {t(`settings.notify.${notifyNote}`)}
+              </p>
+            ) : (
+              <p className="field-help">{t('settings.notify.help')}</p>
+            )}
           </section>
 
           <button type="button" className="text-danger" onClick={onSignOut}>
