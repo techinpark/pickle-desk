@@ -1,11 +1,11 @@
-# 🥒 Pickle Jar
+# 🥒 Pickle Desk
 
 **구글 시트 하나로 AI 비서 피클에게 일을 맡기고, 답변을 휴대폰에서 바로 보는 앱.**
 
-👉 **https://techinpark.github.io/pickle-jar/** 에서 바로 쓸 수 있습니다. 설치도, 서버도, 개발 지식도 필요 없습니다.
+👉 **https://techinpark.github.io/pickle-desk/** 에서 바로 쓸 수 있습니다. 설치도, 서버도, 개발 지식도 필요 없습니다.
 
 ```
- Pickle Jar 앱  ──작업 적기──▶  내 구글 시트(Tasks)  ◀──5분마다 읽고 답 쓰기──  피클
+ Pickle Desk 앱  ──작업 적기──▶  내 구글 시트(Tasks)  ◀──5분마다 읽고 답 쓰기──  피클
        ▲                               │
        └──────── 답변·결과 자동 표시 ◀──┘
 ```
@@ -15,7 +15,7 @@
 - 앱이 몇 초마다 시트를 확인해서 답변을 채팅처럼 보여 줍니다.
 - 홈 화면에 추가하면 앱처럼 쓸 수 있습니다(PWA). 다크 모드, 한국어·영어를 지원합니다.
 
-> Pickle Jar 는 피클 개발사와 관계없는 비공식 오픈소스 프로젝트입니다.
+> Pickle Desk 는 피클 개발사와 관계없는 비공식 오픈소스 프로젝트입니다.
 
 ---
 
@@ -23,13 +23,13 @@
 
 ### 1. 앱 열고 Google 로그인
 
-1. 휴대폰에서 **https://techinpark.github.io/pickle-jar/** 를 엽니다.
+1. 휴대폰에서 **https://techinpark.github.io/pickle-desk/** 를 엽니다.
 2. **Google 계정으로 계속하기** 를 누르고 권한을 허용합니다.
    앱은 **자기가 만든 시트만** 열 수 있고, 드라이브의 다른 파일은 볼 수 없습니다(`drive.file` 권한).
 
 ### 2. 작업함 만들기
 
-**작업함 만들기** 를 누르면 내 구글 드라이브에 `Pickle Jar 작업함` 시트가 생깁니다.
+**작업함 만들기** 를 누르면 내 구글 드라이브에 `Pickle Desk 작업함` 시트가 생깁니다.
 
 ### 3. 피클에게 문장 보내기
 
@@ -75,7 +75,7 @@
 ## 자주 묻는 질문
 
 **내 데이터는 어디로 가나요?**
-작업과 답변은 **내 구글 시트에만** 저장됩니다. 앱은 휴대폰 브라우저에서 구글 시트 API 로 직접 요청하고, 중간 서버는 없습니다. 자세한 내용은 [개인정보처리방침](https://techinpark.github.io/pickle-jar/privacy.html)을 보세요.
+작업과 답변은 **내 구글 시트에만** 저장됩니다. 앱은 휴대폰 브라우저에서 구글 시트 API 로 직접 요청하고, 중간 서버는 없습니다. 자세한 내용은 [개인정보처리방침](https://techinpark.github.io/pickle-desk/privacy.html)을 보세요.
 
 **다른 기기에서도 쓸 수 있나요?**
 같은 구글 계정으로 로그인하면 예전에 만든 작업함을 자동으로 찾아서 이어 씁니다.
@@ -106,15 +106,15 @@ npm run e2e     # 실제 브라우저 E2E (데스크톱·모바일, 구글 API �
 
 - **로그인**: OAuth 2.0 클라이언트 측 흐름(`response_type=token`)을 리디렉트로 씁니다. iOS 홈 화면 앱에서는 팝업이 돌아오지 못해서입니다. 토큰이 만료되면 `prompt=none` 으로 조용히 다시 받고, `state` 로 꾸민 응답을 막습니다.
 - **권한**: `drive.file`(앱이 만든 파일만), `openid`, `email`. 모두 구글 분류상 민감하지 않은 권한이라 앱 심사가 필요 없습니다.
-- **작업함 찾기**: 만들 때 Drive `appProperties` 에 `pickleJar=tasks` 를 달아 두고, 다른 기기에서 로그인하면 그걸로 찾습니다.
-- **배포**: `main` 에 푸시하면 GitHub Actions 가 GitHub Pages 로 배포합니다(`BASE_PATH=/pickle-jar/`). 레포 변수 `GOOGLE_CLIENT_ID` 가 빌드에 들어갑니다.
+- **작업함 찾기**: 만들 때 Drive `appProperties` 에 `pickleDesk=tasks` 를 달아 두고, 다른 기기에서 로그인하면 그걸로 찾습니다.
+- **배포**: `main` 에 푸시하면 GitHub Actions 가 GitHub Pages 로 배포합니다(`BASE_PATH=/pickle-desk/`). 레포 변수 `GOOGLE_CLIENT_ID` 가 빌드에 들어갑니다.
 - **할당량**: 시트 API 기본 할당량은 프로젝트당 분당 읽기 300회입니다. 5초 주기면 동시 사용자 약 25명이라, 사용자가 늘면 Google Cloud 콘솔에서 할당량 증가를 신청하세요(무료).
 
 ### 직접 호스팅하기 (포크)
 
 1. [Google Cloud 콘솔](https://console.cloud.google.com/)에서 프로젝트를 만들고 **Google Sheets API**, **Google Drive API** 를 켭니다.
 2. **Google 인증 플랫폼**에서 앱 이름·지원 이메일·홈페이지·개인정보처리방침(`/privacy.html`)을 채우고, 데이터 액세스에 `drive.file`, `openid`, `email` 을 추가한 뒤 **게시**합니다.
-3. **클라이언트 → 웹 애플리케이션**을 만들고, 승인된 자바스크립트 원본·리디렉션 URI 에 내 주소(예: `https://<me>.github.io` 와 `https://<me>.github.io/pickle-jar/`)를 넣습니다.
+3. **클라이언트 → 웹 애플리케이션**을 만들고, 승인된 자바스크립트 원본·리디렉션 URI 에 내 주소(예: `https://<me>.github.io` 와 `https://<me>.github.io/pickle-desk/`)를 넣습니다.
 4. 클라이언트 ID 를 레포 변수 `GOOGLE_CLIENT_ID` 에 넣고 GitHub Pages 소스를 "GitHub Actions"로 바꿉니다.
 
 ## License

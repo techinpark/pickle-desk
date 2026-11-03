@@ -6,9 +6,9 @@ export const CLIENT_ID: string = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
 // drive.file: 이 앱이 만든 파일에만 접근한다(구글 분류상 민감하지 않은 권한). openid·email: 설정에 계정을 보여 주려고.
 export const SCOPES = ['https://www.googleapis.com/auth/drive.file', 'openid', 'email']
 
-const TOKEN_KEY = 'picklejar.token.v1'
-const STATE_KEY = 'picklejar.oauth.state'
-const SILENT_KEY = 'picklejar.oauth.silentAt'
+const TOKEN_KEY = 'pickledesk.token.v1'
+const STATE_KEY = 'pickledesk.oauth.state'
+const SILENT_KEY = 'pickledesk.oauth.silentAt'
 /** 만료 직전 토큰으로 요청하다 실패하지 않게 여유를 둔다. */
 const EXPIRY_MARGIN_MS = 60_000
 /** 조용한 재로그인이 이 시간 안에 또 필요하면(실패 반복) 로그인 화면을 보여 준다. */

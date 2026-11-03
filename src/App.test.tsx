@@ -14,7 +14,7 @@ function connected(extra: Record<string, unknown> = {}) {
 
 /** 구글에서 돌아온 상태를 꾸민다: 시작할 때 저장한 state 와 #access_token 이 붙은 주소. */
 function returnFromGoogle(hash: (state: string) => string) {
-  sessionStorage.setItem('picklejar.oauth.state', 'st')
+  sessionStorage.setItem('pickledesk.oauth.state', 'st')
   history.replaceState(null, '', `/${hash('st')}`)
 }
 const tokenHash = (state: string) =>
@@ -43,7 +43,7 @@ describe('sign-in and setup', () => {
     expect(went).toHaveLength(1)
     const u = new URL(went[0])
     expect(u.hostname).toBe('accounts.google.com')
-    expect(u.searchParams.get('state')).toBe(sessionStorage.getItem('picklejar.oauth.state'))
+    expect(u.searchParams.get('state')).toBe(sessionStorage.getItem('pickledesk.oauth.state'))
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -62,7 +62,7 @@ describe('sign-in and setup', () => {
     expect(screen.getByText('복사했어요. 피클에게 붙여 넣으세요.')).toBeInTheDocument()
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '완료' }))
     expect(await screen.findByText('아직 작업이 없어요')).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem('picklejar.token.v1')!)).toMatchObject({ accessToken: FAKE_TOKEN, email: FAKE_EMAIL })
+    expect(JSON.parse(localStorage.getItem('pickledesk.token.v1')!)).toMatchObject({ accessToken: FAKE_TOKEN, email: FAKE_EMAIL })
   })
 
   it('signs in on the first try even when the startup effect runs twice (StrictMode)', async () => {
@@ -116,11 +116,11 @@ describe('sign-in and setup', () => {
   it('ignores a token whose state does not match', async () => {
     localStorage.setItem(KEY, JSON.stringify({ locale: 'ko' }))
     fakeSheet()
-    sessionStorage.setItem('picklejar.oauth.state', 'mine')
+    sessionStorage.setItem('pickledesk.oauth.state', 'mine')
     history.replaceState(null, '', `/${tokenHash('forged')}`)
     render(<App />)
     expect(await screen.findByTestId('login-google')).toBeInTheDocument()
-    expect(localStorage.getItem('picklejar.token.v1')).toBeNull()
+    expect(localStorage.getItem('pickledesk.token.v1')).toBeNull()
   })
 
   it('explains a denied Google permission', async () => {
@@ -395,8 +395,8 @@ describe('settings', () => {
     expect(screen.getByTestId('account')).toHaveTextContent(FAKE_EMAIL)
     await userEvent.click(screen.getByRole('button', { name: '로그아웃' }))
     expect(await screen.findByTestId('login-google')).toBeInTheDocument()
-    expect(localStorage.getItem('picklejar.token.v1')).toBeNull()
-    expect(localStorage.getItem('picklejar.workbook.v1')).toBeNull()
+    expect(localStorage.getItem('pickledesk.token.v1')).toBeNull()
+    expect(localStorage.getItem('pickledesk.workbook.v1')).toBeNull()
   })
 })
 

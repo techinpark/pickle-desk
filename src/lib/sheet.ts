@@ -8,7 +8,7 @@ export const PAGE_SIZE = 30
 /** 응답이 이보다 늦으면 끊는다. 걸린 요청 하나 때문에 폴링이 멈추지 않게. */
 export const REQUEST_TIMEOUT_MS = 15_000
 /** 앱이 만든 작업함을 다른 기기에서 다시 찾을 때 쓰는 표시(Drive appProperties). */
-const APP_PROP = { key: 'pickleJar', value: 'tasks' }
+const APP_PROP = { key: 'pickleDesk', value: 'tasks' }
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets'
 const DRIVE = 'https://www.googleapis.com/drive/v3/files'
 

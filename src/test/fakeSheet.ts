@@ -9,11 +9,11 @@ export const FAKE_CONN = { spreadsheetId: FAKE_SHEET_ID, token: () => FAKE_TOKEN
 /** 로그인돼 있고 작업함도 기억하는 상태로 시작한다. */
 export function storeFakeSession(opts: { expired?: boolean; workbook?: boolean } = {}) {
   localStorage.setItem(
-    'picklejar.token.v1',
+    'pickledesk.token.v1',
     JSON.stringify({ accessToken: FAKE_TOKEN, expiresAt: Date.now() + (opts.expired ? -1000 : 3_600_000), email: FAKE_EMAIL }),
   )
   if (opts.workbook !== false) {
-    localStorage.setItem('picklejar.workbook.v1', JSON.stringify({ spreadsheetId: FAKE_SHEET_ID, url: sheetUrl(FAKE_SHEET_ID), email: FAKE_EMAIL }))
+    localStorage.setItem('pickledesk.workbook.v1', JSON.stringify({ spreadsheetId: FAKE_SHEET_ID, url: sheetUrl(FAKE_SHEET_ID), email: FAKE_EMAIL }))
   }
 }
 

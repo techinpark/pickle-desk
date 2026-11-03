@@ -147,17 +147,17 @@ describe('createTask', () => {
 describe('workbook', () => {
   it('creates the Tasks sheet with headers, dropdowns and an app marker', async () => {
     const { fetchMock, state } = fakeSheet()
-    const w = await createWorkbook(FAKE_CONN.token, 'Pickle Jar 작업함')
+    const w = await createWorkbook(FAKE_CONN.token, 'Pickle Desk 작업함')
     expect(w).toEqual({ spreadsheetId: 'new-sheet', url: 'https://docs.google.com/spreadsheets/d/new-sheet/edit' })
     const body = state.created[0] as {
       properties: { title: string }
       sheets: { properties: { title: string }; data: { rowData: { values: { userEnteredValue: { stringValue: string } }[] }[] }[] }[]
     }
-    expect(body.properties.title).toBe('Pickle Jar 작업함')
+    expect(body.properties.title).toBe('Pickle Desk 작업함')
     expect(body.sheets[0].properties.title).toBe('Tasks')
     expect(body.sheets[0].data[0].rowData[0].values.map((v) => v.userEnteredValue.stringValue)).toEqual(HEAD)
     const patch = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH')!
-    expect(JSON.parse(String((patch[1] as RequestInit).body))).toEqual({ appProperties: { pickleJar: 'tasks' } })
+    expect(JSON.parse(String((patch[1] as RequestInit).body))).toEqual({ appProperties: { pickleDesk: 'tasks' } })
   })
 
   it('finds the newest workbook the app made, or nothing', async () => {
@@ -165,7 +165,7 @@ describe('workbook', () => {
     expect(await findWorkbook(FAKE_CONN.token)).toBeNull()
     state.files = ['old-one']
     expect(await findWorkbook(FAKE_CONN.token)).toEqual({ spreadsheetId: 'old-one', url: 'https://docs.google.com/spreadsheets/d/old-one/edit' })
-    expect(decodeURIComponent(String(fetchMock.mock.calls[0][0]))).toContain("appProperties has { key='pickleJar' and value='tasks' }")
+    expect(decodeURIComponent(String(fetchMock.mock.calls[0][0]))).toContain("appProperties has { key='pickleDesk' and value='tasks' }")
   })
 })
 

@@ -1,5 +1,5 @@
 {
-  "name": "pickle-jar",
+  "name": "pickle-desk",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
@@ -38,7 +38,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/techinpark/pickle-jar.git"
+    "url": "https://github.com/techinpark/pickle-desk.git"
   },
   "private": true
 }

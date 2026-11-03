@@ -8,7 +8,7 @@ export interface Settings {
 }
 
 export const POLL_OPTIONS = [5, 10, 15, 30] as const
-export const KEY = 'picklejar.settings.v1'
+export const KEY = 'pickledesk.settings.v1'
 
 export const DEFAULT_SETTINGS: Settings = {
   pollSeconds: 5,

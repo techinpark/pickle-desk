@@ -28,7 +28,7 @@ jobs:
       - run: npm ci
       - run: npm run check
         env:
-          BASE_PATH: /pickle-jar/
+          BASE_PATH: /pickle-desk/
           # 레포 설정 → Secrets and variables → Actions → Variables 에 GOOGLE_CLIENT_ID 를 넣는다(공개 값이라 비밀값이 아님).
           VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
       - uses: actions/upload-pages-artifact@v3

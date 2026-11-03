@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// GitHub Pages 처럼 하위 경로에 올릴 때 BASE_PATH=/pickle-jar/ 로 빌드한다.
+// GitHub Pages 처럼 하위 경로에 올릴 때 BASE_PATH=/pickle-desk/ 로 빌드한다.
 const base = process.env.BASE_PATH ?? '/'
 
 export default defineConfig({
@@ -14,8 +14,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Pickle Jar',
-        short_name: 'Pickle Jar',
+        name: 'Pickle Desk',
+        short_name: 'Pickle Desk',
         description: 'Hand tasks to Pickle through a Google Sheet and watch replies arrive.',
         lang: 'en',
         start_url: base,

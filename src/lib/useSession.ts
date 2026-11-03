@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { canTrySilent, completeRedirect, isFresh, loadToken, signOut, startSignIn } from './google'
 import { createWorkbook, findWorkbook, SheetError, type Connection, type Workbook } from './sheet'
 
-const WORKBOOK_KEY = 'picklejar.workbook.v1'
+const WORKBOOK_KEY = 'pickledesk.workbook.v1'
 
 export type SessionError = 'denied' | 'expired' | 'failed'
 

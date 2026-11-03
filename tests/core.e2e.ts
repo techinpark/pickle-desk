@@ -7,8 +7,8 @@ const HEADERS = ['Id', 'Task', 'Status', 'Category', 'Reply', 'Result', 'Created
 const TOKEN = 'e2e-access-token'
 const EMAIL = 'tester@example.com'
 const SHEET = 'e2e-sheet'
-const KO = `localStorage.setItem('picklejar.settings.v1', JSON.stringify({ locale: 'ko' }))`
-const SIGNED_IN = `localStorage.setItem('picklejar.token.v1', JSON.stringify({ accessToken: '${TOKEN}', expiresAt: Date.now() + 3600000, email: '${EMAIL}' }))`
+const KO = `localStorage.setItem('pickledesk.settings.v1', JSON.stringify({ locale: 'ko' }))`
+const SIGNED_IN = `localStorage.setItem('pickledesk.token.v1', JSON.stringify({ accessToken: '${TOKEN}', expiresAt: Date.now() + 3600000, email: '${EMAIL}' }))`
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-headers': 'authorization, content-type',

@@ -8,10 +8,10 @@ const ok = (state: string, scope = SCOPES.join(' ')) =>
 
 describe('authUrl', () => {
   it('asks for a token by redirect with drive.file only', () => {
-    const u = new URL(authUrl({ state: 's1', uri: 'https://example.github.io/pickle-jar/' }))
+    const u = new URL(authUrl({ state: 's1', uri: 'https://example.github.io/pickle-desk/' }))
     expect(u.origin + u.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth')
     expect(u.searchParams.get('response_type')).toBe('token')
-    expect(u.searchParams.get('redirect_uri')).toBe('https://example.github.io/pickle-jar/')
+    expect(u.searchParams.get('redirect_uri')).toBe('https://example.github.io/pickle-desk/')
     expect(u.searchParams.get('scope')).toBe('https://www.googleapis.com/auth/drive.file openid email')
     expect(u.searchParams.get('state')).toBe('s1')
     expect(u.searchParams.get('prompt')).toBe('select_account')
@@ -55,7 +55,7 @@ describe('token helpers', () => {
   })
 
   it('does not retry a silent refresh right after one', () => {
-    sessionStorage.setItem('picklejar.oauth.silentAt', String(1_000_000))
+    sessionStorage.setItem('pickledesk.oauth.silentAt', String(1_000_000))
     expect(canTrySilent(1_010_000)).toBe(false)
     expect(canTrySilent(1_000_000 + 61_000)).toBe(true)
     sessionStorage.clear()
