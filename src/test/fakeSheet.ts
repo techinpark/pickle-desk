@@ -46,21 +46,29 @@ export function fakeSheet(initial: Partial<Rec>[] = []) {
     CreatedAt: r.CreatedAt ?? `2026-10-28 0${i}:00:00`,
     UpdatedAt: r.UpdatedAt ?? '',
   }))
-  const state = { offline: false, reject: false, missing: false, files: [] as string[], created: [] as unknown[] }
+  const state = { offline: false, reject: false, missing: false, files: [] as string[], created: [] as unknown[], uploads: [] as string[] }
   const grid = () => [[...HEADERS], ...db.map((r) => HEADERS.map((h) => r[h]))]
 
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
     if (state.offline) throw new TypeError('Failed to fetch')
     const url = new URL(String(input))
     const method = init.method ?? 'GET'
-    const body = init.body ? JSON.parse(String(init.body)) : undefined
+    const body = typeof init.body === 'string' ? JSON.parse(init.body) : undefined
     if (url.hostname === 'oauth2.googleapis.com') return json({})
     const auth = (init.headers as Record<string, string> | undefined)?.authorization
     if (state.reject || auth !== `Bearer ${FAKE_TOKEN}`) return err(401, 'Invalid Credentials')
     if (url.hostname === 'openidconnect.googleapis.com') return json({ email: FAKE_EMAIL })
 
     if (url.hostname === 'www.googleapis.com') {
+      if (url.pathname.startsWith('/upload/')) {
+        const id = `img-${state.uploads.length + 1}`
+        state.uploads.push(id)
+        return json({ id })
+      }
+      if (url.searchParams.get('alt') === 'media') return new Response('png', { status: 200 })
+      if (method === 'GET' && url.searchParams.get('q')?.includes('attachments')) return json({ files: [] })
       if (method === 'GET') return json({ files: state.files.map((id) => ({ id })) })
+      if (body?.mimeType === 'application/vnd.google-apps.folder') return json({ id: 'attach-folder' })
       return json({ id: url.pathname.split('/').pop() })
     }
 

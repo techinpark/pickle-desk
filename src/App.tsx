@@ -11,6 +11,8 @@ import { Timeline } from './components/Timeline'
 import { I18nProvider } from './i18n/i18n'
 import { translator } from './i18n/translate'
 import { track } from './lib/analytics'
+import { uploadImage, withImageLinks } from './lib/attach'
+import { DriveToken } from './lib/driveToken'
 import { NOTIFY_BATCH, showSummaryNotification, showTaskNotification, worthNotifying } from './lib/notify'
 import { loadSettings, resolveLocale, saveSettings, type Settings } from './lib/settings'
 import { loadOnboarding, saveOnboarding, type Onboarding as OnboardingState, type Step } from './lib/onboarding'
@@ -164,21 +166,29 @@ export default function App() {
   )
 
   const submit = useCallback(
-    async (task: string, category: Category, source: TaskSource) => {
+    async (task: string, category: Category, source: TaskSource, images: File[] = []) => {
       try {
-        await tasks.create(task, category)
-        track({ name: 'task_send', category, source })
+        let text = task
+        if (images.length) {
+          if (!conn) throw new Error('not connected')
+          // 하나씩 올린다. 휴대폰 회선에서 큰 사진을 한꺼번에 올리면 잘 끊긴다.
+          const ids: string[] = []
+          for (const f of images) ids.push(await uploadImage(conn.token, f, t('attach.folder')))
+          text = withImageLinks(task, ids, t('attach.label'))
+        }
+        await tasks.create(text, category)
+        track({ name: 'task_send', category, source, images: images.length })
         setFilter('all')
         setToast({ text: t('composer.sent') })
         atBottom.current = true
         requestAnimationFrame(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }))
         return true
       } catch {
-        setToast({ text: t('composer.failed'), error: true })
+        setToast({ text: t(images.length ? 'attach.failed' : 'composer.failed'), error: true })
         return false
       }
     },
-    [tasks, t],
+    [tasks, t, conn],
   )
 
   const signOut = () => {
@@ -194,7 +204,7 @@ export default function App() {
   const sendTest = async (text: string) => {
     try {
       const id = await tasks.create(text, 'quick_action')
-      track({ name: 'task_send', category: 'quick_action', source: 'onboarding' })
+      track({ name: 'task_send', category: 'quick_action', source: 'onboarding', images: 0 })
       setOnb((o) => (o ? { ...o, testId: id } : o))
       return id
     } catch {
@@ -274,15 +284,17 @@ export default function App() {
             </div>
           )}
           <main className="main">
-            <Timeline
-              tasks={visible}
-              freshIds={freshIds}
-              loading={tasks.initialLoading}
-              filtered={filter !== 'all'}
-              hasMore={tasks.hasMore && filter === 'all'}
-              loadingMore={tasks.loadingMore}
-              onLoadMore={loadOlder}
-            />
+            <DriveToken.Provider value={conn?.token ?? null}>
+              <Timeline
+                tasks={visible}
+                freshIds={freshIds}
+                loading={tasks.initialLoading}
+                filtered={filter !== 'all'}
+                hasMore={tasks.hasMore && filter === 'all'}
+                loadingMore={tasks.loadingMore}
+                onLoadMore={loadOlder}
+              />
+            </DriveToken.Provider>
           </main>
           {showJump && tasks.tasks.length > 0 && (
             <button

@@ -178,11 +178,11 @@ describe('pickle instruction', () => {
   })
 
   it('adds the one-time backfill line only when asked, matching README', () => {
-    expect(pickleInstruction('u').split('\n')).toHaveLength(8)
+    expect(pickleInstruction('u').split('\n')).toHaveLength(9)
     const withBackfill = pickleInstruction('u', 30).split('\n')
-    expect(withBackfill).toHaveLength(9)
-    expect(withBackfill[8]).toBe(backfillLine(30))
-    expect(withBackfill[8]).toContain('최근 30일')
+    expect(withBackfill).toHaveLength(10)
+    expect(withBackfill[9]).toBe(backfillLine(30))
+    expect(withBackfill[9]).toContain('최근 30일')
     expect(readme).toContain(backfillLine(7))
   })
 

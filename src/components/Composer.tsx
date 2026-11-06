@@ -1,13 +1,14 @@
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import { useI18n } from '../i18n/i18n'
 import type { TaskSource } from '../lib/types'
+import { MAX_IMAGES } from '../lib/attach'
 import { PRESETS } from '../lib/presets'
 import { CATEGORIES, type Category } from '../lib/types'
 import { Icon } from './Icon'
 
 interface Props {
   disabled: boolean
-  onSubmit: (task: string, category: Category, source: TaskSource) => Promise<boolean>
+  onSubmit: (task: string, category: Category, source: TaskSource, images?: File[]) => Promise<boolean>
 }
 
 export function Composer({ disabled, onSubmit }: Props) {
@@ -16,7 +17,26 @@ export function Composer({ disabled, onSubmit }: Props) {
   const [category, setCategory] = useState<Category>('task')
   const [sending, setSending] = useState(false)
   const [picking, setPicking] = useState(false)
+  const [images, setImages] = useState<{ file: File; url: string }[]>([])
   const ref = useRef<HTMLTextAreaElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const imagesRef = useRef(images)
+
+  // 미리보기 주소는 다 쓰면 돌려준다.
+  useEffect(() => {
+    imagesRef.current = images
+  }, [images])
+  useEffect(() => () => imagesRef.current.forEach((i) => URL.revokeObjectURL(i.url)), [])
+
+  const addImages = (e: ChangeEvent<HTMLInputElement>) => {
+    const picked = [...(e.target.files ?? [])].filter((f) => f.type.startsWith('image/'))
+    e.target.value = ''
+    setImages((prev) => [...prev, ...picked.map((file) => ({ file, url: URL.createObjectURL(file) }))].slice(0, MAX_IMAGES))
+  }
+  const removeImage = (url: string) => {
+    URL.revokeObjectURL(url)
+    setImages((prev) => prev.filter((i) => i.url !== url))
+  }
 
   // 입력 길이에 맞춰 높이를 늘린다(최대 6줄 정도).
   useLayoutEffect(() => {
@@ -27,12 +47,18 @@ export function Composer({ disabled, onSubmit }: Props) {
   }, [text])
 
   const send = async (value: string, cat: Category, source: TaskSource) => {
-    const v = value.trim()
+    const files = source === 'composer' ? images.map((i) => i.file) : []
+    // 사진만 보내면 기본 문장을 붙인다.
+    const v = value.trim() || (files.length ? t('attach.defaultTask') : '')
     if (!v || sending || disabled) return
     setSending(true)
-    const ok = await onSubmit(v, cat, source)
+    const ok = await onSubmit(v, cat, source, files)
     setSending(false)
-    if (ok && source === 'composer') setText('')
+    if (ok && source === 'composer') {
+      setText('')
+      images.forEach((i) => URL.revokeObjectURL(i.url))
+      setImages([])
+    }
     ref.current?.focus()
   }
 
@@ -88,6 +114,18 @@ export function Composer({ disabled, onSubmit }: Props) {
               ))}
             </div>
           )}
+          {images.length > 0 && (
+            <div className="attach-row" data-testid="attach-row">
+              {images.map((i, n) => (
+                <div key={i.url} className="attach-thumb">
+                  <img src={i.url} alt={t('attach.alt', { n: n + 1 })} />
+                  <button type="button" className="attach-remove" onClick={() => removeImage(i.url)} aria-label={t('attach.remove', { n: n + 1 })} disabled={sending}>
+                    <Icon name="close" size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="input-row">
             <button
               type="button"
@@ -99,6 +137,17 @@ export function Composer({ disabled, onSubmit }: Props) {
             >
               <Icon name="plus" size={20} />
             </button>
+            <button
+              type="button"
+              className="plus"
+              aria-label={t('attach.add')}
+              onClick={() => fileRef.current?.click()}
+              disabled={disabled || sending || images.length >= MAX_IMAGES}
+              data-testid="attach-image"
+            >
+              <Icon name="image" size={20} />
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={addImages} data-testid="attach-input" />
             {category !== 'task' && <span className="cat-picked">{t(`category.${category}`)}</span>}
             <textarea
               ref={ref}
@@ -114,8 +163,8 @@ export function Composer({ disabled, onSubmit }: Props) {
             <button
               type="submit"
               className="send"
-              disabled={disabled || sending || !text.trim()}
-              aria-label={sending ? t('composer.sending') : t('composer.send')}
+              disabled={disabled || sending || (!text.trim() && images.length === 0)}
+              aria-label={sending ? t(images.length ? 'attach.uploading' : 'composer.sending') : t('composer.send')}
             >
               <Icon name="send" size={20} />
             </button>

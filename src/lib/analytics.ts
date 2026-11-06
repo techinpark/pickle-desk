@@ -47,7 +47,7 @@ export type AppEvent =
   | { name: 'page_view'; page_title: 'sign_in' | 'setup' | 'onboarding' | 'main' }
   | { name: 'login' }
   | { name: 'sheet_create' }
-  | { name: 'task_send'; category: string; source: string }
+  | { name: 'task_send'; category: string; source: string; images: number }
   | { name: 'prompt_copy'; backfill_days: number }
   | { name: 'onboarding_step'; step: string }
   | { name: 'onboarding_done'; skipped: boolean }

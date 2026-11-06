@@ -139,7 +139,7 @@ describe('sign-in and setup', () => {
     expect(screen.getByRole('radio', { name: '안 가져오기' })).toHaveAttribute('aria-checked', 'true')
     expect(prompt.value).not.toContain('처음 한 번만')
     await userEvent.click(screen.getByRole('radio', { name: '최근 7일' }))
-    expect(prompt.value).toContain('7. 처음 한 번만: 최근 7일 동안')
+    expect(prompt.value).toContain('8. 처음 한 번만: 최근 7일 동안')
     await userEvent.click(screen.getByTestId('copy-prompt'))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('최근 7일 동안'))
   })
@@ -464,6 +464,55 @@ describe('composer', () => {
     await waitFor(() => expect(db).toHaveLength(2))
     expect(db[0]).toMatchObject({ Task: '오늘 안 읽은 메일 요약해 줘', Category: 'quick_action', Status: 'pending' })
     expect(db[1]).toMatchObject({ Category: 'briefing' })
+  })
+
+  it('uploads attached photos to Drive and adds their links to the task', async () => {
+    connected()
+    const { db, state, fetchMock } = fakeSheet([])
+    render(<App />)
+    await screen.findByText('아직 작업이 없어요')
+    const png = (n: string) => new File(['png'], n, { type: 'image/png' })
+    await userEvent.upload(screen.getByTestId('attach-input'), [png('a.png'), png('b.png')])
+    expect(within(screen.getByTestId('attach-row')).getAllByRole('img')).toHaveLength(2)
+    await userEvent.click(screen.getByRole('button', { name: '2번째 이미지 빼기' }))
+    await userEvent.type(screen.getByRole('textbox', { name: '피클에게 맡길 일을 적어 주세요' }), '이 영수증 정리해 줘{Enter}')
+    await waitFor(() => expect(db).toHaveLength(1))
+    expect(state.uploads).toEqual(['img-1'])
+    expect(db[0].Task).toBe('이 영수증 정리해 줘\n\n첨부 이미지: https://drive.google.com/file/d/img-1/view')
+    // 첨부 폴더 안에 올린다.
+    const upload = fetchMock.mock.calls.find(([u]) => String(u).includes('/upload/'))!
+    expect(String(upload[0])).toContain('uploadType=multipart')
+    expect(screen.queryByTestId('attach-row')).not.toBeInTheDocument()
+    // 대화에는 링크 대신 사진이 보인다.
+    const item = (await screen.findAllByTestId('task-item'))[0]
+    expect(within(item).getByText('이 영수증 정리해 줘')).toBeInTheDocument()
+    expect(within(item).queryByText(/drive\.google\.com/)).not.toBeInTheDocument()
+    expect(await within(item).findByRole('img', { name: '첨부 이미지 1' })).toHaveAttribute('src', expect.stringMatching(/^blob:/))
+  })
+
+  it('sends photos alone with a default message', async () => {
+    connected()
+    const { db } = fakeSheet([])
+    render(<App />)
+    await screen.findByText('아직 작업이 없어요')
+    expect(screen.getByRole('button', { name: '보내기' })).toBeDisabled()
+    await userEvent.upload(screen.getByTestId('attach-input'), new File(['png'], 'a.png', { type: 'image/png' }))
+    await userEvent.click(screen.getByRole('button', { name: '보내기' }))
+    await waitFor(() => expect(db).toHaveLength(1))
+    expect(db[0].Task).toMatch(/^이 이미지를 봐 줘\.\n\n첨부 이미지: /)
+  })
+
+  it('keeps the photos and shows an error when the upload fails', async () => {
+    connected()
+    const { db, state } = fakeSheet([])
+    render(<App />)
+    await screen.findByText('아직 작업이 없어요')
+    await userEvent.upload(screen.getByTestId('attach-input'), new File(['png'], 'a.png', { type: 'image/png' }))
+    state.offline = true
+    await userEvent.type(screen.getByRole('textbox', { name: '피클에게 맡길 일을 적어 주세요' }), '봐 줘{Enter}')
+    expect(await screen.findByText(/사진을 올리지 못했어요/)).toBeInTheDocument()
+    expect(db).toHaveLength(0)
+    expect(screen.getByTestId('attach-row')).toBeInTheDocument()
   })
 
   it('keeps the text and shows an error when sending fails', async () => {

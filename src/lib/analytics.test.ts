@@ -26,7 +26,7 @@ describe('analytics', () => {
   it('loads gtag once and never sends the URL hash (where the Google token sits)', async () => {
     const { track } = await load('G-TEST123')
     history.replaceState(null, '', '/?x=1#access_token=secret-token')
-    track({ name: 'task_send', category: 'idea', source: 'composer' })
+    track({ name: 'task_send', category: 'idea', source: 'composer', images: 0 })
     track({ name: 'prompt_copy', backfill_days: 0 })
     expect(document.querySelectorAll('script[src*="googletagmanager"]')).toHaveLength(1)
     const calls = window.dataLayer!.map((a) => Array.from(a as ArrayLike<unknown>))

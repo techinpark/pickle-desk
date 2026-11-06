@@ -49,12 +49,13 @@ Check the Tasks tab every 5 minutes and handle it automatically.
 4. If you can't do it, write why in Reply and change Status to failed.
 5. If you have an alert or suggestion for me, add a new row with a title in Task and the details in Reply, and set Status to done.
 6. Don't edit the Id, Task, Category or CreatedAt cells. Leave Id empty on new rows.
+7. If Task includes a Google Drive image link, open the image and use it for the task.
 ```
 
 If you pick a period (last 7 or 30 days) under **Bring in past history too?** when connecting, this line is added at the end so Pickle fills the sheet once with the tasks you gave it and their results (example for 7 days):
 
 ```text
-7. Only once, at the start: add new rows for the tasks I gave you in the last 7 days and their results, as far as you remember. Put the task in Task, a one- or two-sentence result in Reply and the full result in Result, set Status to done (failed if it wasn't finished) and Category to task, and write the date and time I asked in CreatedAt as YYYY-MM-DD HH:mm:ss. Add them oldest first and leave Id empty.
+8. Only once, at the start: add new rows for the tasks I gave you in the last 7 days and their results, as far as you remember. Put the task in Task, a one- or two-sentence result in Reply and the full result in Result, set Status to done (failed if it wasn't finished) and Category to task, and write the date and time I asked in CreatedAt as YYYY-MM-DD HH:mm:ss. Add them oldest first and leave Id empty.
 ```
 
 How much gets filled in depends on how much Pickle remembers of your past conversations.
@@ -102,6 +103,9 @@ Since it's a browser app, the Google sign-in expires every hour. When it does, t
 
 **I have an idea / something doesn't work.**
 Open ≡ menu → **Request an update** for a request form you can send without signing in. Developers are welcome to open [GitHub issues](https://github.com/techinpark/pickle-desk/issues) too.
+
+**Can I send photos too?**
+Use the photo button in the message box to attach up to 4 images. They're uploaded to a `Pickle Desk attachments` folder in your Google Drive (sharing settings aren't changed), and a Drive link is added to the task so Pickle can open it. If you connected Pickle before this feature, send ≡ menu → **Message for Pickle** to Pickle once more (line 7 is new).
 
 **I deleted the sheet.**
 When the app says the task sheet was deleted, tap **Set up again** to create a new one and send Pickle the new message.

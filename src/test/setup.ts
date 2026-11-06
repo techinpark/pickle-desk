@@ -10,4 +10,7 @@ if (typeof window !== 'undefined') {
   })
   // jsdom 에 없는 API
   window.scrollTo = (() => {}) as typeof window.scrollTo
+  let blobs = 0
+  URL.createObjectURL = () => `blob:test/${++blobs}`
+  URL.revokeObjectURL = () => {}
 }

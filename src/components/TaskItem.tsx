@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useI18n } from '../i18n/i18n'
 import { timeLabel } from '../lib/format'
+import { driveFileIds, withoutImageLines } from '../lib/attach'
 import type { Task } from '../lib/types'
+import { DriveImage } from './DriveImage'
 import { Icon } from './Icon'
 import { RichText } from './RichText'
 import { StatusBadge } from './StatusBadge'
@@ -11,6 +13,8 @@ export function TaskItem({ task, fresh }: { task: Task; fresh: boolean }) {
   const [copied, setCopied] = useState(false)
   const hasReply = task.reply.trim().length > 0
   const hasResult = task.result.trim().length > 0
+  const images = useMemo(() => driveFileIds(task.task), [task.task])
+  const text = images.length ? withoutImageLines(task.task) : task.task
 
   const copy = async () => {
     try {
@@ -30,9 +34,18 @@ export function TaskItem({ task, fresh }: { task: Task; fresh: boolean }) {
             <span className={`chip chip-${task.category}`}>{t(`category.${task.category}`)}</span>
             <StatusBadge status={task.status} />
           </div>
-          <p className="task-text">
-            <RichText text={task.task} />
-          </p>
+          {text && (
+            <p className="task-text">
+              <RichText text={text} />
+            </p>
+          )}
+          {images.length > 0 && (
+            <div className="task-images">
+              {images.map((id, i) => (
+                <DriveImage key={id} id={id} alt={t('attach.alt', { n: i + 1 })} />
+              ))}
+            </div>
+          )}
           <time className="meta" dateTime={task.createdAt}>
             {timeLabel(task.createdAt, locale)}
           </time>
